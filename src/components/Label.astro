@@ -1,0 +1,51 @@
+---
+interface Props {
+  name: string;
+  icon?: string;
+  href?: string;
+}
+
+const { name, icon, href } = Astro.props;
+---
+
+<a class="label" href={href} target="_blank">
+  {
+    icon &&
+      (!icon.startsWith("i-") ? (
+        <img class="h-1em" class="label-icon" src={icon} alt={name} />
+      ) : (
+        <div
+          class="label-icon"
+          style={{
+            "background-image": icon,
+          }}
+        >
+          {icon}
+        </div>
+      ))
+  }
+  {name}
+</a>
+
+<style is:global>
+  a {
+    text-decoration: none;
+    color: #121314;
+  }
+</style>
+
+<style lang="scss">
+  .label {
+    display: inline-flex;
+    align-items: center;
+    background: #8882;
+    line-height: 100%;
+    font-size: 0.85em;
+    font-family: Noto Sans SC;
+    transform: translateY(3px);
+    gap: 0.25rem;
+    border-width: 0px !important;
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.375rem;
+  }
+</style>
