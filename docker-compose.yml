@@ -1,0 +1,19 @@
+services:
+  web:
+    build: ./web
+    restart: always
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    depends_on:
+      - server
+
+  server:
+    build: ./server
+    restart: always
+    volumes:
+      - ./data:/app/data
+    expose:
+      - "4000"
+    # Optional: map to host for debugging if needed
+    # ports:
+    #   - "${API_PORT_DEBUG:-4001}:4000"
