@@ -1,5 +1,6 @@
 ---
 import Label from '../components/Label.astro';
+import VisitorCounter from '../components/VisitorCounter';
 ---
 
 <html lang="en">
@@ -75,6 +76,8 @@ import Label from '../components/Label.astro';
       <p class="text-xl font-300 max-w-2xl">Or mail me at hi@zaneliu.me</p>
 
       <p class="text-xl font-300 max-w-2xl">Have a nice day!</p>
+      
+      <VisitorCounter client:idle />
     </main>
   </body>
 </html>

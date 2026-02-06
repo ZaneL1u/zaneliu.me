@@ -1,0 +1,20 @@
+{
+  "name": "zaneliu-nitro-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nitro dev",
+    "build": "nitro build",
+    "preview": "node .output/server/index.mjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.0",
+    "nitropack": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.9",
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  }
+}
