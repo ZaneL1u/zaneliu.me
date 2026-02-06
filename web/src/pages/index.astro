@@ -1,6 +1,7 @@
 ---
 import Label from '../components/Label.astro';
 import VisitorCounter from '../components/VisitorCounter';
+import Plum from '../components/Plum';
 ---
 
 <html lang="en">
@@ -78,6 +79,7 @@ import VisitorCounter from '../components/VisitorCounter';
       <p class="text-xl font-300 max-w-2xl">Have a nice day!</p>
       
       <VisitorCounter client:idle />
+      <Plum client:only="solid-js" />
     </main>
   </body>
 </html>
