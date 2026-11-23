@@ -58,10 +58,10 @@ const t = (en: string, zh: string): Text => ({ en, zh })
 
 export const DEFAULT_CONTENT: Content = {
   intro: {
-    title: t('Zane Liu — Software Engineer in Beijing', 'Zane Liu — 北京的软件工程师'),
+    title: t('Zane Liu', 'Zane Liu'),
     description: t(
-      'Zane Liu is a software engineer in Beijing, working at 洋葱学园 and contributing to Vue, Taro and PixiJS.',
-      'Zane Liu，北京的软件工程师，在洋葱学园工作，给 Vue、Taro、PixiJS 等开源项目做过贡献。',
+      'Zane Liu — software engineer. I build things for the web, mostly in TypeScript, and contribute to open source.',
+      'Zane Liu，软件工程师，日常主要用 TypeScript 写 Web，也给开源项目做贡献。',
     ),
     hello: { en: ['Hello, I\'m ', '.'], zh: ['你好，我是 ', '。'] },
     lead: t(

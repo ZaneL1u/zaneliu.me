@@ -46,9 +46,9 @@ export interface Copy {
 export const COPY: Record<Lang, Copy> = {
   en: {
     htmlLang: 'en',
-    title: 'Zane Liu — Software Engineer in Beijing',
+    title: 'Zane Liu',
     description:
-      'Zane Liu is a software engineer in Beijing, working at 洋葱学园 and contributing to Vue, Taro and PixiJS.',
+      'Zane Liu — software engineer. I build things for the web, mostly in TypeScript, and contribute to open source.',
     hello: ['Hello, I\'m ', '.'],
     lead: 'Software engineer based in Beijing. I build things for the web, mostly in TypeScript, and lately I\'ve been getting to know Rust.',
     contact: 'Contact',
@@ -87,8 +87,8 @@ export const COPY: Record<Lang, Copy> = {
   },
   zh: {
     htmlLang: 'zh-CN',
-    title: 'Zane Liu — 北京的软件工程师',
-    description: 'Zane Liu，北京的软件工程师，在洋葱学园工作，给 Vue、Taro、PixiJS 等开源项目做过贡献。',
+    title: 'Zane Liu',
+    description: 'Zane Liu，软件工程师，日常主要用 TypeScript 写 Web，也给开源项目做贡献。',
     hello: ['你好，我是 ', '。'],
     lead: '在北京做软件开发。日常主要用 TypeScript 写 Web，最近在认真学 Rust。',
     contact: '联系方式',
