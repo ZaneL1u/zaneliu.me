@@ -1,20 +1,19 @@
 import {
   defineConfig,
   presetAttributify,
-  presetMini,
-  presetTagify,
-  presetTypography,
-  presetUno,
+  presetIcons,
+  presetWind3,
   transformerDirectives,
 } from 'unocss'
 
 export default defineConfig({
   transformers: [transformerDirectives()],
   presets: [
-    presetUno(),
-    presetTagify(),
-    presetMini(),
+    presetWind3(),
     presetAttributify(),
-    presetTypography(),
+    presetIcons({
+      scale: 1,
+      extraProperties: { 'display': 'inline-block', 'vertical-align': '-0.125em' },
+    }),
   ],
 })

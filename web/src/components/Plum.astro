@@ -1,0 +1,124 @@
+---
+// 背景的生成式梅枝。纯原生脚本，不依赖任何前端框架运行时。
+---
+
+<div class="plum" aria-hidden="true">
+  <canvas></canvas>
+</div>
+
+<style>
+  .plum {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    mask-image: radial-gradient(circle, transparent, black);
+    -webkit-mask-image: radial-gradient(circle, transparent, black);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
+<script>
+  const r180 = Math.PI
+  const r90 = Math.PI / 2
+  const r15 = Math.PI / 12
+  const MIN_BRANCH = 30
+  const LEN = 6
+  const COLOR = '#88888825'
+  const { random } = Math
+
+  const canvas = document.querySelector<HTMLCanvasElement>('.plum canvas')!
+  const ctx = canvas.getContext('2d')!
+
+  let width = 0
+  let height = 0
+  let steps: (() => void)[] = []
+  let raf = 0
+  let last = 0
+  const interval = 1000 / 40
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1
+    width = window.innerWidth
+    height = window.innerHeight
+    canvas.width = width * dpr
+    canvas.height = height * dpr
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  }
+
+  function step(x: number, y: number, rad: number, counter = { value: 0 }) {
+    counter.value += 1
+    const length = random() * LEN
+    const nx = x + length * Math.cos(rad)
+    const ny = y + length * Math.sin(rad)
+
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(nx, ny)
+    ctx.stroke()
+
+    if (nx < -100 || nx > width + 100 || ny < -100 || ny > height + 100)
+      return
+
+    // 计数器按单棵树的总步数累计：前 MIN_BRANCH 步每步期望 1.6 个子枝（快速铺开），
+    // 之后期望 1 个子枝（临界状态，自然生长到停）。
+    const rate = counter.value <= MIN_BRANCH ? 0.8 : 0.5
+    if (random() < rate)
+      steps.push(() => step(nx, ny, rad + random() * r15, counter))
+    if (random() < rate)
+      steps.push(() => step(nx, ny, rad - random() * r15, counter))
+  }
+
+  function frame(now: number) {
+    if (now - last < interval) {
+      raf = requestAnimationFrame(frame)
+      return
+    }
+    last = now
+
+    const current = steps
+    steps = []
+    current.forEach(fn => fn())
+
+    if (steps.length)
+      raf = requestAnimationFrame(frame)
+  }
+
+  function start() {
+    cancelAnimationFrame(raf)
+    resize()
+    ctx.clearRect(0, 0, width, height)
+    ctx.lineWidth = 1
+    ctx.strokeStyle = COLOR
+    steps = [
+      () => step(random() * width, 0, r90),
+      () => step(random() * width, height, -r90),
+      () => step(0, random() * height, 0),
+      () => step(width, random() * height, r180),
+    ]
+    if (width < 500)
+      steps = steps.slice(0, 2)
+    raf = requestAnimationFrame(frame)
+  }
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (!reduceMotion) {
+    start()
+
+    let timer = 0
+    let lastWidth = window.innerWidth
+    window.addEventListener('resize', () => {
+      // 手机滚动时地址栏伸缩只改高度，不重画
+      if (window.innerWidth === lastWidth)
+        return
+      lastWidth = window.innerWidth
+      clearTimeout(timer)
+      timer = window.setTimeout(start, 200)
+    })
+  }
+</script>

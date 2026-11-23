@@ -1,0 +1,47 @@
+---
+// 访客计数。依赖 /api/visit（server/ 里的 Nitro 服务）；接口不可用时整块保持隐藏。
+---
+
+<div class="visitor-counter" hidden>
+  VISITORS: <span class="font-bold"></span>
+</div>
+
+<style>
+  .visitor-counter {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    font-size: 0.75rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+    user-select: none;
+  }
+
+  .visitor-counter:hover {
+    opacity: 1;
+  }
+</style>
+
+<script>
+  const el = document.querySelector<HTMLElement>('.visitor-counter')!
+
+  async function load() {
+    try {
+      const res = await fetch('/api/visit')
+      if (!res.ok || !res.headers.get('content-type')?.includes('json'))
+        return
+      const { count } = await res.json()
+      if (typeof count !== 'number')
+        return
+      el.querySelector('span')!.textContent = count.toLocaleString('en-US')
+      el.hidden = false
+    }
+    catch {}
+  }
+
+  if ('requestIdleCallback' in window)
+    requestIdleCallback(() => load())
+  else
+    setTimeout(load, 200)
+</script>

@@ -1,0 +1,216 @@
+---
+import '@fontsource/instrument-serif/latin-400.css'
+import '@fontsource/instrument-serif/latin-400-italic.css'
+import type { Lang } from '../i18n'
+import { COPY, LANGS, PATHS } from '../i18n'
+
+interface Props {
+  lang: Lang
+  title: string
+  description: string
+  image?: string
+}
+
+const { lang, title, description, image = '/avatar.jpg' } = Astro.props
+const canonical = new URL(Astro.url.pathname, Astro.site)
+const ogImage = new URL(image, Astro.site)
+---
+
+<!doctype html>
+<html lang={COPY[lang].htmlLang} data-lang={lang} data-paths={JSON.stringify(PATHS)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="author" content="Zane Liu" />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/avatar.jpg" />
+    {LANGS.map(l => <link rel="alternate" hreflang={COPY[l].htmlLang} href={new URL(PATHS[l], Astro.site)} />)}
+    <link rel="alternate" hreflang="x-default" href={new URL('/', Astro.site)} />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#faf9f6" />
+    <script is:inline>
+      // 首屏渲染前：套用保存的主题；按保存的语言（或首次访问时浏览器语言）跳到对应页面
+      ;(function () {
+        var root = document.documentElement
+        var lang = root.dataset.lang
+        var paths = JSON.parse(root.dataset.paths || '{}')
+        var store = {}
+        try {
+          store.theme = localStorage.getItem('theme')
+          store.lang = localStorage.getItem('lang')
+        }
+        catch (e) {}
+        if (store.theme === 'light' || store.theme === 'dark')
+          root.dataset.theme = store.theme
+        var want = store.lang
+        if (!want && lang === 'en') {
+          var langs = navigator.languages || [navigator.language || '']
+          if (String(langs[0] || '').toLowerCase().indexOf('zh') === 0)
+            want = 'zh'
+        }
+        if (want && want !== lang && paths[want])
+          location.replace(paths[want] + location.search + location.hash)
+      })()
+    </script>
+
+    <meta property="og:type" content="profile" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #faf9f6;
+    --fg: #1d1c1a;
+    --muted: #75736d;
+    --faint: #a9a69e;
+    --line: #1d1c1a14;
+    --chip: #ffffffb3;
+    --chip-hover: #ffffff;
+    --shadow: 0 1px 2px #1d1c1a0d, 0 4px 16px -8px #1d1c1a26;
+    --accent: #c2410c;
+    color-scheme: light dark;
+  }
+
+  :root[data-theme='light'] {
+    color-scheme: light;
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --bg: #121211;
+    --fg: #ecebe7;
+    --muted: #9a9890;
+    --faint: #6a6862;
+    --line: #ecebe714;
+    --chip: #ffffff0a;
+    --chip-hover: #ffffff14;
+    --shadow: 0 1px 2px #0006, 0 4px 16px -8px #0009;
+    --accent: #fb923c;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --bg: #121211;
+      --fg: #ecebe7;
+      --muted: #9a9890;
+      --faint: #6a6862;
+      --line: #ecebe714;
+      --chip: #ffffff0a;
+      --chip-hover: #ffffff14;
+      --shadow: 0 1px 2px #0006, 0 4px 16px -8px #0009;
+      --accent: #fb923c;
+    }
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    background: var(--bg);
+    color: var(--fg);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      'PingFang SC',
+      'Hiragino Sans GB',
+      'Microsoft YaHei',
+      Roboto,
+      'Helvetica Neue',
+      sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  main section {
+    margin-top: 3.5rem;
+  }
+
+  main h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  main h2::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+
+  main section p {
+    margin: 0 0 1rem;
+  }
+
+  @media (max-width: 480px) {
+    main section {
+      margin-top: 2.75rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+      animation-delay: calc(var(--d, 0) * 80ms);
+    }
+
+    @keyframes reveal {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+    }
+  }
+
+  .serif {
+    font-family: 'Instrument Serif', ui-serif, Georgia, 'Songti SC', serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+</style>

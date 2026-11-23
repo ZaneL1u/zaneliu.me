@@ -1,0 +1,380 @@
+---
+import type { Lang } from '../i18n'
+import { COVERS, ICONS, loadContent } from '../content'
+import { COPY } from '../i18n'
+import Base from '../layouts/Base.astro'
+import Activity from './Activity.astro'
+import Chip from './Chip.astro'
+import Plum from './Plum.astro'
+import Toolbar from './Toolbar.astro'
+import VisitorCounter from './VisitorCounter.astro'
+
+interface Props {
+  lang: Lang
+}
+
+const { lang } = Astro.props
+const t = COPY[lang]
+// 文案和列表来自 dashboard（构建时取，失败用默认值）；界面上的固定标签仍在 i18n.ts
+const c = await loadContent()
+const tx = (v: { en: string, zh: string }) => v[lang]
+const icon = (key: string) => ICONS[key]
+const intro = c.intro
+
+const openSource = c.open_source.map(x => ({ name: x.name, href: x.href, icon: icon(x.icon) }))
+const languages = c.languages.map(x => ({ name: x.name, icon: icon(x.icon) }))
+const aiTools = c.ai_tools.map(x => ({ name: x.name, icon: icon(x.icon) }))
+const life = c.life.map(x => ({ name: tx(x.name), icon: icon(x.icon) }))
+const pets = c.pets.map(x => ({ name: x.name, kind: tx(x.kind), icon: icon(x.icon) }))
+const g = t.games
+const games = c.games
+  .filter(x => COVERS[x.cover])
+  .map(x => ({ name: tx(x.name), cover: COVERS[x.cover], note: x.note ? tx(x.note) : undefined }))
+---
+
+<Base lang={lang} title={tx(intro.title)} description={tx(intro.description)}>
+  <Toolbar lang={lang} />
+  <main class="page">
+    <header class="hero reveal">
+      <img class="avatar" src="/avatar.jpg" alt="Zane Liu" width="88" height="88" />
+      <h1 class="serif">
+        {intro.hello[lang][0]}<em>Zane</em>{intro.hello[lang][1]}
+      </h1>
+      <p class="lead">{tx(intro.lead)}</p>
+      <nav class="social" aria-label={t.contact}>
+        <a class="btn" href="https://github.com/ZaneL1u" target="_blank" rel="noopener me">
+          <span class="i-simple-icons-github" aria-hidden="true"></span> GitHub
+        </a>
+        <a class="btn" href="mailto:hi@zaneliu.me">
+          <span class="i-ph-envelope-simple" aria-hidden="true"></span> hi@zaneliu.me
+        </a>
+      </nav>
+    </header>
+
+    <section class="reveal" style="--d: 1">
+      <h2>{t.work.title}</h2>
+      <p>
+        {tx(intro.work_before)}
+        <Chip name={c.company.name} href={c.company.href} icon={icon(c.company.icon)} />{tx(intro.work_after)}
+      </p>
+      <div class="chips">
+        {openSource.map(item => <Chip {...item} />)}
+      </div>
+      <p>{tx(intro.thinking)}</p>
+    </section>
+
+    <section class="reveal" style="--d: 2">
+      <h2>{t.tools.title}</h2>
+      <div class="tool-row">
+        <span class="tool-label">{t.tools.languages}</span>
+        <div class="chips">
+          {languages.map(item => <Chip {...item} />)}
+        </div>
+      </div>
+      <div class="tool-row">
+        <span class="tool-label">{t.tools.ai}</span>
+        <div class="chips">
+          {aiTools.map(item => <Chip {...item} />)}
+        </div>
+      </div>
+    </section>
+
+    <Activity lang={lang} />
+
+    <section class="reveal" style="--d: 3">
+      <h2>{t.life.title}</h2>
+      <div class="chips">
+        {life.map(item => <Chip {...item} />)}
+      </div>
+      <div class="pets">
+        {
+          pets.map(pet => (
+            <div class="pet">
+              <img class="pet-icon" src={pet.icon} alt="" width="44" height="44" loading="lazy" decoding="async" />
+              <div>
+                <div class="pet-name">{pet.name}</div>
+                <div class="pet-kind">{pet.kind}</div>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="reveal" style="--d: 4">
+      <h2>{g.title}</h2>
+      <ul class="games">
+        {
+          games.map(game => (
+            <li class="game">
+              <div class="cover">
+                <img src={game.cover} alt="" width="360" height="540" loading="lazy" decoding="async" />
+                {game.note && <span class="game-note">{game.note}</span>}
+              </div>
+              <span class="game-name">{game.name}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <footer class="reveal" style="--d: 5">
+      <p class="serif sign-off">{tx(intro.sign_off)}</p>
+      <p class="fine">© {new Date().getFullYear()} Zane Liu</p>
+    </footer>
+  </main>
+
+  <VisitorCounter />
+  <Plum />
+</Base>
+
+<style>
+  .page {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: max(12vh, 3rem) 1.5rem calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  /* ---------- hero ---------- */
+  .avatar {
+    display: block;
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow:
+      0 0 0 4px var(--bg),
+      0 0 0 5px var(--line),
+      var(--shadow);
+  }
+
+  h1 {
+    margin: 1.75rem 0 0.75rem;
+    font-size: clamp(2.75rem, 9vw, 4.25rem);
+    line-height: 1.02;
+  }
+
+  :global(html[data-lang='zh']) h1 {
+    font-size: clamp(2.25rem, 8.6vw, 4rem);
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .lead {
+    margin: 0;
+    max-width: 34em;
+    font-size: 1.125rem;
+    color: var(--muted);
+  }
+
+  .social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1.75rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    min-height: 40px;
+    padding: 0 1rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--chip);
+    font-size: 0.925rem;
+    font-weight: 500;
+    transition:
+      transform 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .btn:hover {
+    background: var(--chip-hover);
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
+  }
+
+  /* ---------- sections ---------- */
+
+  section p :global(.chip) {
+    vertical-align: -0.3em;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  /* ---------- pets ---------- */
+  .pets {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+  }
+
+  .pet {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--chip);
+  }
+
+  .pet-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: none;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .pet:hover .pet-icon {
+    transform: rotate(-8deg) scale(1.08);
+  }
+
+  .pet-name {
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  .pet-kind {
+    font-size: 0.85rem;
+    color: var(--faint);
+  }
+
+  /* ---------- tools ---------- */
+  .tool-row {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+  }
+
+  .tool-label {
+    flex: none;
+    width: 5.5rem;
+    font-size: 0.82rem;
+    color: var(--faint);
+  }
+
+  /* ---------- games ---------- */
+  .games {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.1rem 0.85rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .game {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .cover {
+    position: relative;
+    aspect-ratio: 2 / 3;
+    overflow: hidden;
+    border-radius: 10px;
+    background: var(--line);
+    box-shadow: var(--shadow);
+    transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.25s ease;
+  }
+
+  .cover img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .game:hover .cover {
+    transform: translateY(-3px) rotate(-0.6deg);
+    box-shadow: 0 2px 4px #0000001a, 0 14px 28px -12px #00000059;
+  }
+
+  .game-name {
+    font-size: 0.85rem;
+    line-height: 1.35;
+  }
+
+  .game-note {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    padding: 0.1em 0.5em;
+    border-radius: 999px;
+    background: #000000a6;
+    color: #fff;
+    font-size: 0.7rem;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* ---------- footer ---------- */
+  footer {
+    margin-top: 4.5rem;
+  }
+
+  .sign-off {
+    margin: 0;
+    font-size: 2rem;
+    font-style: italic;
+  }
+
+  .fine {
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    color: var(--faint);
+  }
+
+
+  /* ---------- small screens ---------- */
+  @media (max-width: 480px) {
+    .page {
+      padding-top: 3.5rem;
+      padding-inline: 1.25rem;
+    }
+
+    .avatar {
+      width: 72px;
+      height: 72px;
+    }
+
+    .lead {
+      font-size: 1.05rem;
+    }
+
+    .games {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem 0.65rem;
+    }
+
+    .tool-row {
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .pet {
+      padding: 0.75rem;
+    }
+
+    .pet-icon {
+      width: 2.25rem;
+      height: 2.25rem;
+    }
+  }
+</style>

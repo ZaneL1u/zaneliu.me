@@ -1,0 +1,154 @@
+---
+import type { Lang } from '../i18n'
+import { COPY, PATHS } from '../i18n'
+
+interface Props {
+  lang: Lang
+}
+
+const { lang } = Astro.props
+const other: Lang = lang === 'en' ? 'zh' : 'en'
+const t = COPY[lang]
+---
+
+<div class="toolbar">
+  <a
+    class="tool lang-switch"
+    href={PATHS[other]}
+    hreflang={COPY[other].htmlLang}
+    lang={COPY[other].htmlLang}
+    data-lang={other}
+  >
+    <span class="i-ph-translate" aria-hidden="true"></span>
+    {t.switchLang}
+  </a>
+  <button
+    class="tool theme-switch"
+    type="button"
+    aria-label={t.theme.label}
+    data-label-system={t.theme.system}
+    data-label-light={t.theme.light}
+    data-label-dark={t.theme.dark}
+  >
+    <span class="i-ph-desktop" data-icon="system" aria-hidden="true"></span>
+    <span class="i-ph-sun" data-icon="light" aria-hidden="true"></span>
+    <span class="i-ph-moon" data-icon="dark" aria-hidden="true"></span>
+    <span class="theme-text"></span>
+  </button>
+</div>
+
+<style>
+  .toolbar {
+    position: absolute;
+    top: max(1rem, env(safe-area-inset-top));
+    right: max(1rem, env(safe-area-inset-right));
+    z-index: 10;
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .tool {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    height: 34px;
+    padding: 0 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--chip);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: inherit;
+    font: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition:
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .tool:hover {
+    background: var(--chip-hover);
+    box-shadow: var(--shadow);
+  }
+
+  .tool:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .theme-switch [data-icon] {
+    display: none;
+  }
+
+  .theme-switch[data-pref='system'] [data-icon='system'],
+  .theme-switch[data-pref='light'] [data-icon='light'],
+  .theme-switch[data-pref='dark'] [data-icon='dark'] {
+    display: inline-block;
+  }
+
+  @media (max-width: 480px) {
+    .theme-text {
+      display: none;
+    }
+
+    .tool {
+      padding: 0 0.7rem;
+    }
+  }
+</style>
+
+<script>
+  type Pref = 'system' | 'light' | 'dark'
+  const ORDER: Pref[] = ['system', 'light', 'dark']
+  const root = document.documentElement
+  const btn = document.querySelector<HTMLButtonElement>('.theme-switch')!
+  const text = btn.querySelector<HTMLElement>('.theme-text')!
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+  const media = window.matchMedia('(prefers-color-scheme: dark)')
+
+  function read(): Pref {
+    try {
+      const v = localStorage.getItem('theme')
+      return v === 'light' || v === 'dark' ? v : 'system'
+    }
+    catch {
+      return 'system'
+    }
+  }
+
+  function apply(pref: Pref) {
+    if (pref === 'system')
+      delete root.dataset.theme
+    else
+      root.dataset.theme = pref
+    const dark = pref === 'dark' || (pref === 'system' && media.matches)
+    meta?.setAttribute('content', dark ? '#121211' : '#faf9f6')
+    btn.dataset.pref = pref
+    const label = btn.dataset[`label${pref[0].toUpperCase()}${pref.slice(1)}`] ?? pref
+    text.textContent = label
+    btn.title = label
+  }
+
+  apply(read())
+  media.addEventListener('change', () => apply(read()))
+
+  btn.addEventListener('click', () => {
+    const next = ORDER[(ORDER.indexOf(read()) + 1) % ORDER.length]
+    try {
+      if (next === 'system')
+        localStorage.removeItem('theme')
+      else
+        localStorage.setItem('theme', next)
+    }
+    catch {}
+    apply(next)
+  })
+
+  document.querySelector<HTMLAnchorElement>('.lang-switch')!.addEventListener('click', (e) => {
+    try {
+      localStorage.setItem('lang', (e.currentTarget as HTMLElement).dataset.lang!)
+    }
+    catch {}
+  })
+</script>

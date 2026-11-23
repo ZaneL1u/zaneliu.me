@@ -1,16 +1,12 @@
-import solid from '@astrojs/solid-js'
 import { defineConfig } from 'astro/config'
 import Unocss from 'unocss/astro'
-import Icons from 'unplugin-icons/vite'
 
 // https://astro.build/config
 export default defineConfig({
-  integrations: [solid(), Unocss()],
-  vite: {
-    plugins: [
-      Icons({
-        compiler: 'astro',
-      }),
-    ],
+  site: 'https://zaneliu.me',
+  integrations: [Unocss()],
+  build: {
+    // 单页小站：CSS 直接内联，省一次请求
+    inlineStylesheets: 'always',
   },
 })
