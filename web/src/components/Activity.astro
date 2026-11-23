@@ -1330,5 +1330,5 @@ const TEXT = {
   fetch(root.dataset.api!)
     .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
     .then(render)
-    .catch(() => {})
+    .catch(e => console.warn('[activity] 数据加载或渲染失败：', e))
 </script>
