@@ -87,11 +87,6 @@ const TEXT = {
     </figure>
   </section>
 
-  <section class="reveal" style="--d: 5">
-    <h2>{TEXT.logTitle}</h2>
-    <ol class="log" data-slot="log"></ol>
-  </section>
-
   <section class="reveal" style="--d: 5" data-slot="models-section" hidden>
     <h2>{TEXT.modelsTitle}</h2>
     <p class="note">{TEXT.modelsNote}</p>
@@ -103,6 +98,12 @@ const TEXT = {
     <ol class="models" data-slot="models"></ol>
     <p class="fine-note" data-slot="embeddings"></p>
   </section>
+
+  <section class="reveal" style="--d: 5">
+    <h2>{TEXT.logTitle}</h2>
+    <ol class="log" data-slot="log"></ol>
+  </section>
+
 
   <section class="reveal" style="--d: 6" data-slot="oss-section">
     <h2>{TEXT.ossTitle}</h2>
@@ -299,6 +300,65 @@ const TEXT = {
     visibility: hidden;
   }
 
+  .heat :global(i[data-d]) {
+    cursor: default;
+  }
+
+  .heat :global(i[data-d]:hover) {
+    outline: 1.5px solid var(--fg);
+    outline-offset: 1px;
+  }
+
+  :global(.heat-tip) {
+    position: fixed;
+    z-index: 50;
+    max-width: min(320px, calc(100vw - 24px));
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg);
+    box-shadow: var(--shadow);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--fg);
+    pointer-events: none;
+  }
+
+  :global(.heat-tip[hidden]) {
+    display: none;
+  }
+
+  :global(.heat-tip b) {
+    display: block;
+    margin-bottom: 0.15rem;
+    font-weight: 600;
+  }
+
+  :global(.heat-tip .row) {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    color: var(--muted);
+  }
+
+  :global(.heat-tip .row span:last-child) {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  :global(.heat-tip .sep) {
+    margin: 0.35rem 0 0.2rem;
+    font-size: 0.7rem;
+    color: var(--faint);
+  }
+
+  :global(.heat-tip .gh) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted);
+  }
+
   figcaption {
     display: flex;
     flex-wrap: wrap;
@@ -361,7 +421,14 @@ const TEXT = {
   }
 
   .log :global(.what) {
-    margin: 0 0 0.35rem;
+    margin: 0 0 0.2rem;
+  }
+
+  .log :global(.detail) {
+    margin: 0 0 0.45rem;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--muted);
   }
 
   .log :global(.meta) {
@@ -684,6 +751,10 @@ const TEXT = {
     transition: background-color 0.15s ease, color 0.15s ease;
   }
 
+  .more[hidden] {
+    display: none;
+  }
+
   .more:hover {
     background: var(--chip-hover);
     color: var(--fg);
@@ -726,8 +797,12 @@ const TEXT = {
     scope: Record<string, number>
     kinds: { key: string, count: number }[]
     tech: { key: string, count: number }[]
+    peak_hour?: number | null
     commits: Commits
     github?: GhDayItem[]
+    first_hour?: number | null
+    last_hour?: number | null
+    projects?: Record<string, number>
   }
   type GhDayItem = { type: string, repo: string, title?: string, action?: string, url?: string, count?: number, stars?: number }
   type OssItem = { repo: string, title: string, url?: string, merged_at: string, stars: number, language?: string | null }
@@ -743,6 +818,7 @@ const TEXT = {
     reports: Report[]
     github: { user: string, repos: Repo[], timeline?: OssItem[] }
     activity?: GhEvent[]
+    day_details?: Record<string, { models?: [string, number][], tools?: Record<string, number>, github?: GhDayItem[] }>
     usage?: {
       all: UsageRange
       month: UsageRange
@@ -808,6 +884,12 @@ const TEXT = {
         prs: (n: number) => `${n} 个 PR`,
         more: (n: number) => `展示更多 +${n}`,
         expand: (n: number) => `展开 +${n}`,
+        detail: (o: { tools: string, hours: string, kinds: string, projects: string }) =>
+          [o.tools, o.hours, o.kinds && `具体：${o.kinds}`, o.projects].filter(Boolean).join('；') + '。',
+        hoursText: (a: number, b: number, peak: number | null) => (a === b ? `${a} 点前后` : `${a} 点到 ${b} 点${peak != null ? `，${peak} 点最忙` : ''}`),
+        projectsText: (parts: string[]) => (parts.length ? `涉及 ${parts.join('、')}` : ''),
+        projectScope: { personal: ' 个个人项目', oss: ' 个开源项目', work: ' 个工作项目', other: ' 个其他目录' } as Record<string, string>,
+        tipSessions: '会话', tipTokens: 'token', tipModels: '主要模型', tipGithub: 'GitHub 动态', tipNone: '这天没有记录',
         collapse: '收起',
         dayKinds: { MergedPR: '合入', PullRequestEvent: 'PR', ReleaseEvent: '发布', PublicEvent: '开源', CreateEvent: '新仓库', IssuesEvent: 'Issue', PushEvent: '推送' } as Record<string, string>,
         pushes: (n: number) => `${n} 次推送`,
@@ -846,6 +928,12 @@ const TEXT = {
         prs: (n: number) => `${n} PR${n > 1 ? 's' : ''}`,
         more: (n: number) => `Show ${n} more`,
         expand: (n: number) => `Show ${n} more`,
+        detail: (o: { tools: string, hours: string, kinds: string, projects: string }) =>
+          [o.tools, o.hours, o.kinds && `breakdown: ${o.kinds}`, o.projects].filter(Boolean).join('; ') + '.',
+        hoursText: (a: number, b: number, peak: number | null) => (a === b ? `around ${a}:00` : `${a}:00 to ${b}:00${peak != null ? `, busiest at ${peak}:00` : ''}`),
+        projectsText: (parts: string[]) => (parts.length ? `across ${parts.join(', ')}` : ''),
+        projectScope: { personal: ' side projects', oss: ' open-source projects', work: ' work projects', other: ' other folders' } as Record<string, string>,
+        tipSessions: 'sessions', tipTokens: 'tokens', tipModels: 'Top models', tipGithub: 'GitHub', tipNone: 'Nothing recorded',
         collapse: 'Show less',
         dayKinds: { MergedPR: 'Merged', PullRequestEvent: 'PR', ReleaseEvent: 'Release', PublicEvent: 'Public', CreateEvent: 'New repo', IssuesEvent: 'Issue', PushEvent: 'Push' } as Record<string, string>,
         pushes: (n: number) => `${n} push${n > 1 ? 'es' : ''}`,
@@ -905,6 +993,40 @@ const TEXT = {
     return v => (v <= 0 ? 0 : v <= cuts[0] ? 1 : v <= cuts[1] ? 2 : v <= cuts[2] ? 3 : 4)
   }
 
+  // 悬停详情：整页一个浮层，热力图格子带 data-d（日期），内容由各自的 tip 函数生成
+  const tip = document.createElement('div')
+  tip.className = 'heat-tip'
+  tip.hidden = true
+  document.body.appendChild(tip)
+  const tipFns = new WeakMap<HTMLElement, (date: string) => string>()
+  function showTip(cell: HTMLElement, html: string) {
+    tip.innerHTML = html
+    tip.hidden = false
+    const r = cell.getBoundingClientRect()
+    const w = tip.offsetWidth
+    const h = tip.offsetHeight
+    const left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), window.innerWidth - w - 8)
+    const top = r.top - h - 8 < 8 ? r.bottom + 8 : r.top - h - 8
+    tip.style.left = `${left}px`
+    tip.style.top = `${top}px`
+  }
+  function bindTip(el: HTMLElement, fn: (date: string) => string) {
+    tipFns.set(el, fn)
+    if (el.dataset.tipBound)
+      return
+    el.dataset.tipBound = '1'
+    const handler = (e: Event) => {
+      const cell = (e.target as HTMLElement).closest<HTMLElement>('i[data-d]')
+      if (!cell)
+        return
+      showTip(cell, tipFns.get(el)!(cell.dataset.d!))
+    }
+    el.addEventListener('mouseover', handler)
+    el.addEventListener('click', handler)
+    el.addEventListener('mouseleave', () => (tip.hidden = true))
+  }
+  window.addEventListener('scroll', () => (tip.hidden = true), { passive: true })
+
   function drawHeatmap(el: HTMLElement, days: Day[], value: (d: Day) => number, label: (d: Day) => string) {
     if (!days.length) {
       el.innerHTML = ''
@@ -915,7 +1037,7 @@ const TEXT = {
     const cells: string[] = Array.from({ length: first }, () => '<i class="pad"></i>')
     for (const d of days) {
       const text = `${fmtLong.format(parseDay(d.date))}: ${label(d)}`
-      cells.push(`<i data-l="${level(value(d))}" title="${esc(text)}" aria-label="${esc(text)}"></i>`)
+      cells.push(`<i data-l="${level(value(d))}" data-d="${d.date}" aria-label="${esc(text)}"></i>`)
     }
     el.innerHTML = cells.join('')
     // 手机上横向滚动时默认停在最近的日子
@@ -950,6 +1072,20 @@ const TEXT = {
     return `<div class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></div>`
   }
 
+  /** 日报的第二行：工具分布、时间段、各类事情的次数、涉及的项目数（不出现项目名） */
+  function dayDetail(r: Report): string {
+    const sep = isZh ? '、' : ', '
+    const tools = Object.entries(r.sessions).filter(([, n]) => n > 0)
+      .map(([t, n]) => `${TOOLS[t as Tool] ?? t} ${n}`).join(' · ')
+    const hours = r.first_hour != null && r.last_hour != null ? L.hoursText(r.first_hour, r.last_hour, r.peak_hour ?? null) : ''
+    const kinds = r.kinds.map(k => L.kinds[k.key] ? `${L.kinds[k.key]} ${k.count}` : '').filter(Boolean).join(sep)
+    const projects = L.projectsText(
+      Object.entries(r.projects ?? {}).filter(([, n]) => n > 0)
+        .map(([k, n]) => `${n}${L.projectScope[k] ?? ` ${k}`}`),
+    )
+    return L.detail({ tools, hours, kinds, projects })
+  }
+
   function describe(r: Report): string {
     const kinds = r.kinds.slice(0, 2).map(k => L.kinds[k.key]).filter(Boolean)
     const tech = r.tech.filter(t => t.key !== 'Markdown').slice(0, 3).map(t => t.key)
@@ -969,6 +1105,39 @@ const TEXT = {
 
   function render(p: Profile) {
     const days = expand(p.calendar)
+    const byDate = new Map(days.map(d => [d.date, d]))
+    const details = p.day_details ?? {}
+    const row = (k: string, v: string) => `<div class="row"><span>${esc(k)}</span><span>${esc(v)}</span></div>`
+    const ghLine = (it: GhDayItem) => {
+      const extra = it.type === 'PushEvent' ? L.pushes(it.count ?? 1) : (it.title ?? '')
+      return `<div class="gh">${esc(L.dayKinds[it.type] ?? it.type)} · ${esc(it.repo)}${extra ? ` · ${esc(extra)}` : ''}</div>`
+    }
+    const codeTip = (date: string) => {
+      const d = byDate.get(date)
+      const det = details[date]
+      const parts = [`<b>${esc(fmtLong.format(parseDay(date)))}</b>`]
+      if (!d || !commitsOf(d))
+        parts.push(`<div class="row"><span>${esc(L.noContrib)}</span></div>`)
+      else
+        parts.push(row('GitHub', num(d.commits.github)), row(L.privateRepos, num(d.commits.gitea)))
+      if (det?.github?.length)
+        parts.push(`<div class="sep">${esc(L.tipGithub)}</div>`, ...det.github.map(ghLine))
+      return parts.join('')
+    }
+    const aiTip = (date: string) => {
+      const d = byDate.get(date)
+      const det = details[date]
+      const parts = [`<b>${esc(fmtLong.format(parseDay(date)))}</b>`]
+      if (!d || (!d.sessions && !d.tokens))
+        return parts.concat(`<div class="row"><span>${esc(L.tipNone)}</span></div>`).join('')
+      for (const [t, n] of Object.entries(det?.tools ?? {}))
+        parts.push(row(TOOLS[t as Tool] ?? t, `${num(n)} ${L.tipSessions}`))
+      if (d.tokens)
+        parts.push(row(L.tipTokens, compact(d.tokens)))
+      if (det?.models?.length)
+        parts.push(`<div class="sep">${esc(L.tipModels)}</div>`, ...det.models.map(([m, t]) => row(m, compact(t))))
+      return parts.join('')
+    }
 
     // ---------- 代码贡献 ----------
     const c = p.totals.all.commits
@@ -989,6 +1158,7 @@ const TEXT = {
       })
       slot('code-caption').textContent = L.codeCaption(list.reduce((a, d) => a + commitsOf(d), 0), label)
     })
+    bindTip(slot('code-heat'), codeTip)
 
     // ---------- AI 用量 ----------
     const all = p.totals.all
@@ -1016,6 +1186,7 @@ const TEXT = {
       const t = list.reduce((a, d) => a + d.tokens, 0)
       slot('ai-caption').textContent = L.aiCaption(n, compact(t), label)
     })
+    bindTip(slot('ai-heat'), aiTip)
     slot('ai-since').textContent = L.since(p.since.ai, p.since.tokens)
 
     // ---------- AI 日报 ----------
@@ -1053,6 +1224,7 @@ const TEXT = {
             <time datetime="${r.date}">${fmtShort.format(d)}<small>${fmtWeekday.format(d)}</small></time>
             <div>
               <p class="what">${esc(describe(r))}</p>
+              <p class="detail">${esc(dayDetail(r))}</p>
               <div class="meta">
                 <span class="tag">${L.sessions(sessions)}</span>
                 ${r.tokens ? `<span class="tag">${L.tokens(compact(r.tokens))}</span>` : ''}
