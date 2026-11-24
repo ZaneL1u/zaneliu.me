@@ -18,6 +18,7 @@
     "@antfu/eslint-config": "^5.0.0",
     "@astrojs/check": "^0.9.12",
     "@iconify/json": "^2.2.560",
+    "@unocss/astro": "66.13.0",
     "@unocss/preset-icons": "^66.13.0",
     "astro": "^7.4.13",
     "eslint": "^9.31.0",
