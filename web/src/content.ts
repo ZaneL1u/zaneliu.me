@@ -18,7 +18,7 @@ export interface Content {
   open_source: { name: string, href: string, icon: string }[]
   languages: { name: string, icon: string }[]
   ai_tools: { name: string, icon: string }[]
-  life: { name: Text, icon: string }[]
+  life: { name: Text, icon: string, note?: Text }[]
   pets: { name: string, kind: Text, icon: string }[]
   games: { name: Text, cover: string, note?: Text }[]
 }
@@ -71,8 +71,8 @@ export const DEFAULT_CONTENT: Content = {
     work_before: t('I\'m currently at', '目前在'),
     work_after: t(', and in my spare time I contribute to open source:', '工作，业余时间给开源项目做贡献：'),
     thinking: t(
-      'I like to think things through on my own, untangle hard problems, and plan for the long run. New ideas and new technology still get me excited.',
-      '我喜欢独立思考，把复杂的问题拆开想清楚，也习惯做长远的规划。新想法和新技术，到现在依然会让我兴奋。',
+      'I\'m an INTJ and a Capricorn. I like to think things through before I start, and once I do, I\'ll keep tinkering until I\'m happy with it. I don\'t talk much, but bring up something I\'m into and I\'ll go on for hours. Not many friends, but the ones I have are close.',
+      '我是 INTJ，摩羯座。做事喜欢先想明白再动手，想明白了就会一直折腾到自己满意为止。平时话不多，但碰上感兴趣的话题能聊很久。朋友不多，但都很铁。',
     ),
     sign_off: t('Have a nice day.', '祝你今天愉快。'),
   },
@@ -94,14 +94,14 @@ export const DEFAULT_CONTENT: Content = {
     { name: 'Cursor', icon: 'cursor' },
   ],
   life: [
-    { name: t('Skiing', '滑雪'), icon: 'skier' },
-    { name: t('Guitar', '吉他'), icon: 'guitar' },
+    { name: t('Skiing', '滑雪'), note: t('on two skis, learning to carve', '双板，在学刻滑'), icon: 'skier' },
+    { name: t('Guitar', '吉他'), note: t('just about managing Castle in the Sky', '刚能弹《天空之城》'), icon: 'guitar' },
     { name: t('My little farm', '我的小农场'), icon: 'seedling' },
-    { name: t('Cooking with my wife', '和老婆一起做饭'), icon: 'cooking' },
+    { name: t('Cooking with my wife', '和老婆一起做饭'), note: t('a few signature dishes', '有几道拿手菜'), icon: 'cooking' },
   ],
   pets: [
-    { name: '漏洞', kind: t('the dog', '狗狗'), icon: 'dog' },
-    { name: '胖子', kind: t('the cat', '猫咪'), icon: 'cat' },
+    { name: '漏洞', kind: t('Labrador, 7', '拉布拉多 · 7 岁'), icon: 'dog' },
+    { name: '胖子', kind: t('Dragon Li cat, 9', '狸花猫 · 9 岁'), icon: 'cat' },
   ],
   games: [
     { name: t('Zelda: Breath of the Wild', '塞尔达传说：旷野之息'), cover: 'zelda' },

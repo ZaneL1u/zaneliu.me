@@ -23,7 +23,7 @@ const intro = c.intro
 const openSource = c.open_source.map(x => ({ name: x.name, href: x.href, icon: icon(x.icon) }))
 const languages = c.languages.map(x => ({ name: x.name, icon: icon(x.icon) }))
 const aiTools = c.ai_tools.map(x => ({ name: x.name, icon: icon(x.icon) }))
-const life = c.life.map(x => ({ name: tx(x.name), icon: icon(x.icon) }))
+const life = c.life.map(x => ({ name: tx(x.name), icon: icon(x.icon), note: x.note ? tx(x.note) : undefined }))
 const pets = c.pets.map(x => ({ name: x.name, kind: tx(x.kind), icon: icon(x.icon) }))
 const g = t.games
 const games = c.games
