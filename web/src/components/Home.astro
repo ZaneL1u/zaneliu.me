@@ -26,9 +26,18 @@ const aiTools = c.ai_tools.map(x => ({ name: x.name, icon: icon(x.icon) }))
 const life = c.life.map(x => ({ name: tx(x.name), icon: icon(x.icon), note: x.note ? tx(x.note) : undefined }))
 const pets = c.pets.map(x => ({ name: x.name, kind: tx(x.kind), icon: icon(x.icon) }))
 const g = t.games
+const hoursText = (n: number) => g.hours.replace('{n}', lang === 'zh' ? String(n) : n.toLocaleString('en-US'))
 const games = c.games
   .filter(x => COVERS[x.cover])
-  .map(x => ({ name: tx(x.name), cover: COVERS[x.cover], note: x.note ? tx(x.note) : undefined }))
+  .map(x => ({
+    name: tx(x.name),
+    cover: COVERS[x.cover],
+    note: x.note ? tx(x.note) : undefined,
+    hours: x.hours ? hoursText(x.hours) : undefined,
+    href: x.href?.startsWith('https://') ? x.href : undefined,
+  }))
+const p = c.personality
+const report = p.report
 ---
 
 <Base lang={lang} title={tx(intro.title)} description={tx(intro.description)}>
@@ -47,6 +56,9 @@ const games = c.games
         <a class="btn" href="mailto:hi@zaneliu.me">
           <span class="i-ph-envelope-simple" aria-hidden="true"></span> hi@zaneliu.me
         </a>
+        <button class="btn" type="button" data-dialog="wechat" aria-haspopup="dialog">
+          <span class="i-ph-wechat-logo" aria-hidden="true"></span> {t.wechat.label}
+        </button>
       </nav>
     </header>
 
@@ -59,7 +71,38 @@ const games = c.games
       <div class="chips">
         {openSource.map(item => <Chip {...item} />)}
       </div>
-      <p>{tx(intro.thinking)}</p>
+    </section>
+
+    <section class="reveal" style="--d: 2">
+      <h2>{t.personality.title}</h2>
+      <div class="mbti">
+        <div class="mbti-head">
+          <div>
+            <div class="mbti-type serif">{p.type}</div>
+            <div class="mbti-name">{tx(p.name)}</div>
+          </div>
+          <button class="btn btn-sm" type="button" data-dialog="mbti" aria-haspopup="dialog">
+            {t.personality.details} <span class="i-ph-arrow-up-right" aria-hidden="true"></span>
+          </button>
+        </div>
+        <ul class="axes">
+          {
+            p.axes.map(a => (
+              <li class="axis">
+                <span class="axis-side">
+                  <b>{a.letter}</b> {tx(a.label)} <span class="axis-pct">{a.percent}%</span>
+                </span>
+                <span class="axis-bar" role="img" aria-label={`${tx(a.label)} ${a.percent}% / ${tx(a.other_label)} ${100 - a.percent}%`}>
+                  <span style={`width: ${Math.min(100, Math.max(0, a.percent))}%`}></span>
+                </span>
+                <span class="axis-side axis-other">
+                  <span class="axis-pct">{100 - a.percent}%</span> <span class="axis-word">{tx(a.other_label)}</span> <b>{a.other_letter}</b>
+                </span>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
     </section>
 
     <section class="reveal" style="--d: 2">
@@ -106,11 +149,28 @@ const games = c.games
         {
           games.map(game => (
             <li class="game">
-              <div class="cover">
-                <img src={game.cover} alt="" width="360" height="540" loading="lazy" decoding="async" />
-                {game.note && <span class="game-note">{game.note}</span>}
-              </div>
-              <span class="game-name">{game.name}</span>
+              {
+                (() => {
+                  const Tag = game.href ? 'a' : 'div'
+                  return (
+                    <Tag
+                      class="game-body"
+                      href={game.href}
+                      target={game.href ? '_blank' : undefined}
+                      rel={game.href ? 'noopener' : undefined}
+                      aria-label={game.href ? `${game.name} · ${g.steam}` : undefined}
+                    >
+                      <div class="cover">
+                        <img src={game.cover} alt="" width="360" height="540" loading="lazy" decoding="async" />
+                        {game.note && <span class="game-note">{game.note}</span>}
+                        {game.href && <span class="game-steam i-simple-icons-steam" aria-hidden="true" />}
+                      </div>
+                      <span class="game-name">{game.name}</span>
+                      {game.hours && <span class="game-hours">{game.hours}</span>}
+                    </Tag>
+                  )
+                })()
+              }
             </li>
           ))
         }
@@ -123,8 +183,53 @@ const games = c.games
     </footer>
   </main>
 
+  <dialog class="sheet sheet-qr" id="wechat" aria-labelledby="wechat-title">
+    <button class="sheet-close" type="button" data-close aria-label={t.close}>
+      <span class="i-ph-x" aria-hidden="true"></span>
+    </button>
+    <h2 class="sheet-title serif" id="wechat-title">{t.wechat.title}</h2>
+    <div class="qr">
+      <img class="qr-light" src="/wechat-qr-light.png" alt={t.wechat.scan} width="240" height="240" loading="lazy" decoding="async" />
+      <img class="qr-dark" src="/wechat-qr-dark.png" alt={t.wechat.scan} width="240" height="240" loading="lazy" decoding="async" />
+    </div>
+    <p class="qr-scan">{t.wechat.scan}</p>
+    <p class="qr-hint">{t.wechat.longPress}</p>
+  </dialog>
+
+  <dialog class="sheet" id="mbti" aria-labelledby="mbti-title">
+    <button class="sheet-close" type="button" data-close aria-label={t.close}>
+      <span class="i-ph-x" aria-hidden="true"></span>
+    </button>
+    <h2 class="sheet-title serif" id="mbti-title">{tx(report.title)}</h2>
+    <p class="sheet-intro">{tx(report.intro)}</p>
+    {
+      report.sections.map(sec => (
+        <div class="report-sec">
+          <h3>{tx(sec.title)}</h3>
+          <p>{tx(sec.body)}</p>
+        </div>
+      ))
+    }
+    <p class="fine">{tx(report.footnote)}</p>
+  </dialog>
+
   <Plum />
 </Base>
+
+<script>
+  // 弹窗：带 data-dialog 的按钮打开对应 <dialog>；点关闭按钮或弹窗外的遮罩关闭
+  for (const btn of document.querySelectorAll<HTMLElement>('[data-dialog]')) {
+    const dlg = document.getElementById(btn.dataset.dialog ?? '')
+    if (dlg instanceof HTMLDialogElement)
+      btn.addEventListener('click', () => dlg.showModal())
+  }
+  for (const dlg of document.querySelectorAll('dialog')) {
+    dlg.addEventListener('click', (e) => {
+      if (e.target === dlg || (e.target as Element).closest('[data-close]'))
+        dlg.close()
+    })
+  }
+</script>
 
 <style>
   .page {
@@ -276,9 +381,6 @@ const games = c.games
   }
 
   .game {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
     min-width: 0;
   }
 
@@ -299,7 +401,7 @@ const games = c.games
     object-fit: cover;
   }
 
-  .game:hover .cover {
+  .game-body:hover .cover {
     transform: translateY(-3px) rotate(-0.6deg);
     box-shadow: 0 2px 4px #0000001a, 0 14px 28px -12px #00000059;
   }
@@ -320,6 +422,257 @@ const games = c.games
     font-size: 0.7rem;
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
+  }
+
+  .game-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  a.game-body:hover .game-name {
+    color: var(--accent);
+  }
+
+  .game-hours {
+    margin-top: -0.35rem;
+    font-size: 0.75rem;
+    color: var(--faint);
+  }
+
+  .game-steam {
+    position: absolute;
+    right: 0.45rem;
+    bottom: 0.45rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    color: #fff;
+    opacity: 0;
+    filter: drop-shadow(0 1px 2px #0009);
+    transition: opacity 0.2s ease;
+  }
+
+  a.game-body:hover .game-steam,
+  a.game-body:focus-visible .game-steam {
+    opacity: 0.95;
+  }
+
+  /* ---------- personality ---------- */
+  .mbti {
+    padding: 1.1rem 1.25rem 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--chip);
+  }
+
+  .mbti-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .mbti-type {
+    font-size: 2.4rem;
+    line-height: 1;
+    color: var(--accent);
+  }
+
+  .mbti-name {
+    margin-top: 0.3rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .btn-sm {
+    min-height: 32px;
+    padding: 0 0.8rem;
+    font-size: 0.85rem;
+    color: inherit;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .axes {
+    display: grid;
+    grid-template-columns: max-content 1fr max-content;
+    gap: 0.55rem 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .axis {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .axis-side b {
+    font-weight: 600;
+  }
+
+  .axis-pct {
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
+
+  .axis-other {
+    text-align: right;
+    color: var(--faint);
+  }
+
+  .axis-other .axis-pct {
+    color: var(--faint);
+  }
+
+  .axis-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--line);
+    overflow: hidden;
+  }
+
+  .axis-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+  }
+
+  /* ---------- dialogs ---------- */
+  .sheet {
+    width: min(560px, calc(100vw - 2rem));
+    max-height: min(84vh, 760px);
+    margin: auto;
+    padding: 1.75rem 1.75rem 1.5rem;
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: var(--bg);
+    color: var(--fg);
+    box-shadow: 0 24px 60px -20px #0000008c;
+    overscroll-behavior: contain;
+  }
+
+  .sheet[open] {
+    animation: sheet-in 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .sheet::backdrop {
+    background: #0000004d;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  @keyframes sheet-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.98);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sheet[open] {
+      animation: none;
+    }
+  }
+
+  .sheet-close {
+    position: absolute;
+    top: 0.9rem;
+    right: 0.9rem;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 50%;
+    background: var(--chip);
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .sheet-close:hover {
+    background: var(--chip-hover);
+    color: var(--fg);
+  }
+
+  .sheet-title {
+    margin: 0 2rem 0.75rem 0;
+    font-size: 2rem;
+    line-height: 1.1;
+  }
+
+  .sheet-intro {
+    margin: 0 0 1.25rem;
+    color: var(--muted);
+  }
+
+  .report-sec h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .report-sec p {
+    margin: 0.2rem 0 1rem;
+  }
+
+  .sheet-qr {
+    width: min(340px, calc(100vw - 2rem));
+    text-align: center;
+  }
+
+  .sheet-qr .sheet-title {
+    margin-right: 0;
+  }
+
+  .qr img {
+    display: block;
+    width: 240px;
+    height: 240px;
+    margin: 0 auto;
+    border-radius: 14px;
+  }
+
+  .qr-dark {
+    display: none !important;
+  }
+
+  :global(:root[data-theme='dark']) .qr-light {
+    display: none !important;
+  }
+
+  :global(:root[data-theme='dark']) .qr-dark {
+    display: block !important;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .qr-light {
+      display: none !important;
+    }
+
+    :global(:root:not([data-theme='light'])) .qr-dark {
+      display: block !important;
+    }
+  }
+
+  .qr-scan {
+    margin: 0.9rem 0 0;
+    font-weight: 500;
+  }
+
+  .qr-hint {
+    margin: 0.1rem 0 0;
+    font-size: 0.8rem;
+    color: var(--faint);
   }
 
   /* ---------- footer ---------- */
@@ -359,6 +712,26 @@ const games = c.games
     .games {
       grid-template-columns: repeat(3, 1fr);
       gap: 1rem 0.65rem;
+    }
+
+    .axes {
+      column-gap: 0.6rem;
+    }
+
+    .axis {
+      font-size: 0.8rem;
+    }
+
+    .axis-other .axis-word {
+      display: none;
+    }
+
+    .mbti {
+      padding: 1rem;
+    }
+
+    .sheet {
+      padding: 1.5rem 1.25rem 1.25rem;
     }
 
     .tool-row {

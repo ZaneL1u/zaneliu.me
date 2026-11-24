@@ -14,8 +14,9 @@ export interface Copy {
     title: string
     before: string
     after: string
-    thinking: string
   }
+  personality: { title: string, details: string }
+  wechat: { label: string, title: string, scan: string, longPress: string }
   tools: { title: string, languages: string, ai: string }
   life: {
     title: string
@@ -37,7 +38,11 @@ export interface Copy {
     bfv: string
     fresh: string
     sometimes: string
+    /** {n} 替换为小时数 */
+    hours: string
+    steam: string
   }
+  close: string
   signOff: string
   switchLang: string
   theme: { system: string, light: string, dark: string, label: string }
@@ -56,8 +61,13 @@ export const COPY: Record<Lang, Copy> = {
       title: 'Work',
       before: 'I\'m currently at',
       after: ', and in my spare time I contribute to open source:',
-      thinking:
-        'I like to think things through on my own, untangle hard problems, and plan for the long run. New ideas and new technology still get me excited.',
+    },
+    personality: { title: 'Personality', details: 'Details' },
+    wechat: {
+      label: 'WeChat',
+      title: 'Add me on WeChat',
+      scan: 'Scan with WeChat to add me',
+      longPress: 'Browsing in WeChat? Long-press the code.',
     },
     tools: { title: 'Tools', languages: 'Languages', ai: 'AI tools' },
     life: {
@@ -80,7 +90,10 @@ export const COPY: Record<Lang, Copy> = {
       bfv: 'Battlefield V',
       fresh: 'new',
       sometimes: 'now and then',
+      hours: '~{n} hrs',
+      steam: 'on Steam',
     },
+    close: 'Close',
     signOff: 'Have a nice day.',
     switchLang: '中文',
     theme: { system: 'System theme', light: 'Light theme', dark: 'Dark theme', label: 'Switch theme' },
@@ -96,7 +109,13 @@ export const COPY: Record<Lang, Copy> = {
       title: '工作',
       before: '目前在',
       after: '工作，业余时间给开源项目做贡献：',
-      thinking: '我喜欢独立思考，把复杂的问题拆开想清楚，也习惯做长远的规划。新想法和新技术，到现在依然会让我兴奋。',
+    },
+    personality: { title: '性格', details: '详细' },
+    wechat: {
+      label: '微信',
+      title: '加我微信',
+      scan: '微信扫一扫，加我为好友',
+      longPress: '在微信里浏览时，可长按识别',
     },
     tools: { title: '常用技术', languages: '语言', ai: 'AI 工具' },
     life: {
@@ -119,7 +138,10 @@ export const COPY: Record<Lang, Copy> = {
       bfv: '战地 5',
       fresh: '新作',
       sometimes: '偶尔',
+      hours: '约 {n} 小时',
+      steam: 'Steam 页面',
     },
+    close: '关闭',
     signOff: '祝你今天愉快。',
     switchLang: 'EN',
     theme: { system: '跟随系统', light: '浅色', dark: '深色', label: '切换主题' },
