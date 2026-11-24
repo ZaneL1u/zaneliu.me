@@ -1338,7 +1338,8 @@ const TEXT = {
     root.hidden = false
   }
 
-  fetch(root.dataset.api!)
+  // 每次都向服务器确认（服务端按天缓存，开销很小），避免浏览器拿着旧数据
+  fetch(root.dataset.api!, { cache: 'no-cache' })
     .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
     .then(render)
     .catch(e => console.warn('[activity] 数据加载或渲染失败：', e))
