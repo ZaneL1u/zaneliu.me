@@ -2,7 +2,7 @@
 interface Props {
   name: string
   href?: string
-  /** 图片地址，或 UnoCSS 图标类名（以 `i-` 开头） */
+  /** 站内图片地址；`mask:` 开头表示单色图标，用文字颜色着色 */
   icon?: string
   /** 名字后面的小字说明 */
   note?: string
@@ -10,7 +10,7 @@ interface Props {
 
 const { name, href, icon, note } = Astro.props
 const Tag = href ? 'a' : 'span'
-const isIconClass = icon?.startsWith('i-')
+const mask = icon?.startsWith('mask:') ? icon.slice(5) : undefined
 ---
 
 <Tag
@@ -20,8 +20,8 @@ const isIconClass = icon?.startsWith('i-')
   rel={href ? 'noopener' : undefined}
 >
   {
-    icon && (isIconClass
-      ? <span class:list={[icon, 'chip-icon']} aria-hidden="true" />
+    icon && (mask
+      ? <span class="chip-icon chip-mask" style={`--icon: url(${mask})`} aria-hidden="true" />
       : <img class="chip-icon" src={icon} alt="" width="18" height="18" loading="lazy" decoding="async" />)
   }
   <span>{name}</span>
@@ -61,6 +61,13 @@ const isIconClass = icon?.startsWith('i-')
     flex: none;
     border-radius: 4px;
     object-fit: contain;
+  }
+
+  .chip-mask {
+    border-radius: 0;
+    background: currentColor;
+    -webkit-mask: var(--icon) center / contain no-repeat;
+    mask: var(--icon) center / contain no-repeat;
   }
 
   .chip-note {

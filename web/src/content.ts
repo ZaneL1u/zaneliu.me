@@ -31,19 +31,22 @@ export interface Personality {
   report: { title: Text, intro: Text, sections: { title: Text, body: Text }[], footnote: Text }
 }
 
-/** 图标键 → UnoCSS 图标类（i- 开头）或站内图片路径 */
+/**
+ * 图标键 → 站内图片路径（public/ 下）。`mask:` 开头的是单色图标，按文字颜色着色，暗色主题下也看得见。
+ * 不要用 UnoCSS 的 i- 图标类：这些键从接口取、类名只出现在 .ts 里，UnoCSS 扫不到就不会生成样式。
+ */
 export const ICONS: Record<string, string> = {
   'yangcong': '/yangcongxueyuan.svg',
-  'vue': 'i-logos-vue',
+  'vue': '/icons/tech/vue.svg',
   'taro': '/icons/taro.png',
   'pixi': '/icons/pixi.png',
-  'typescript': 'i-logos-typescript-icon',
-  'python': 'i-logos-python',
-  'go': 'i-logos-go',
-  'rust': 'i-simple-icons-rust',
-  'claude': 'i-logos-claude-icon',
-  'openai': 'i-simple-icons-openai',
-  'cursor': 'i-simple-icons-cursor',
+  'typescript': '/icons/tech/typescript.svg',
+  'python': '/icons/tech/python.svg',
+  'go': '/icons/tech/go.svg',
+  'rust': 'mask:/icons/tech/rust.svg',
+  'claude': '/icons/tech/claude.svg',
+  'openai': 'mask:/icons/tech/openai.svg',
+  'cursor': 'mask:/icons/tech/cursor.svg',
   'snowboarder': '/icons/emoji/snowboarder.svg',
   'guitar': '/icons/emoji/guitar.svg',
   'seedling': '/icons/emoji/seedling.svg',
