@@ -22,7 +22,7 @@ const TEXT = {
     allTime: 'All time',
     last30: 'Last 30 days',
     ossTitle: 'Open source',
-    ossNote: 'Open source projects I\'ve contributed to, newest first.',
+    ossNote: 'My own open source projects and the ones I\'ve contributed to, newest first.',
     activityTitle: 'Recent activity',
     less: 'Less',
     more: 'More',
@@ -39,7 +39,7 @@ const TEXT = {
     allTime: '全部',
     last30: '近 30 天',
     ossTitle: '参与的开源项目',
-    ossNote: '我参与过的开源项目，按时间从近到远。',
+    ossNote: '我自己的开源项目，以及参与贡献过的项目，按时间从近到远。',
     activityTitle: '最近动态',
     less: '少',
     more: '多',
@@ -710,6 +710,15 @@ const TEXT = {
     color: var(--faint);
   }
 
+  .timeline :global(.own) {
+    padding: 0.05em 0.5em;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+
   .timeline :global(.stars) {
     display: inline-flex;
     align-items: center;
@@ -805,7 +814,7 @@ const TEXT = {
     projects?: Record<string, number>
   }
   type GhDayItem = { type: string, repo: string, title?: string, action?: string, url?: string, count?: number, stars?: number }
-  type OssItem = { repo: string, title: string, url?: string, merged_at: string, stars: number, language?: string | null }
+  type OssItem = { kind?: 'pr' | 'own', repo: string, title: string, url?: string, merged_at: string, stars: number, language?: string | null }
   type GhEvent = { id: string, type: string, repo: string, created_at: string, action?: string, title?: string, url?: string, ref?: string, ref_type?: string, commits?: number }
   type Repo = { repo: string, prs: number, stars?: number, description?: string, language?: string | null }
   type Profile = {
@@ -883,6 +892,7 @@ const TEXT = {
         codeCaption: (n: number, label: string) => `${label}：${n.toLocaleString('zh-CN')} 次贡献。`,
         prs: (n: number) => `${n} 个 PR`,
         more: (n: number) => `展示更多 +${n}`,
+        ownBadge: '我的项目',
         expand: (n: number) => `展开 +${n}`,
         detail: (o: { tools: string, hours: string, kinds: string, projects: string }) =>
           [o.tools, o.hours, o.kinds && `具体：${o.kinds}`, o.projects].filter(Boolean).join('；') + '。',
@@ -927,6 +937,7 @@ const TEXT = {
         codeCaption: (n: number, label: string) => `${label}: ${n.toLocaleString('en-US')} contributions.`,
         prs: (n: number) => `${n} PR${n > 1 ? 's' : ''}`,
         more: (n: number) => `Show ${n} more`,
+        ownBadge: 'My project',
         expand: (n: number) => `Show ${n} more`,
         detail: (o: { tools: string, hours: string, kinds: string, projects: string }) =>
           [o.tools, o.hours, o.kinds && `breakdown: ${o.kinds}`, o.projects].filter(Boolean).join('; ') + '.',
@@ -1304,7 +1315,7 @@ const TEXT = {
         const [owner, name] = x.repo.split('/')
         parts.push(`<li class="item"><a href="${esc(x.url || `https://github.com/${x.repo}`)}" target="_blank" rel="noopener">
           <span class="head">
-            <span class="name"><span>${esc(owner)}/</span>${esc(name ?? '')}</span>
+            <span class="name"><span>${esc(owner)}/</span>${esc(name ?? '')}</span>${x.kind === 'own' ? `<span class="own">${esc(L.ownBadge)}</span>` : ''}
             <span class="meta"><span class="stars">${STAR}${compact(x.stars)}</span>${x.language ? `<span>${esc(x.language)}</span>` : ''}</span>
             <time datetime="${esc(x.merged_at)}">${esc(fmtMonthDay.format(new Date(x.merged_at)))}</time>
           </span>
