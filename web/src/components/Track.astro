@@ -1,0 +1,283 @@
+---
+// 访问统计埋点：上报到 dashboard（/api/v1/public/site/collect），在 dashboard「访问统计」里看。
+// 记录：这次访问的基本信息（来源、语言、屏幕、时区、配色）、停留时长（前台且有操作的时间）、
+// 最深滚动、点击（站内 / 外链）、弹窗停留、各区块是否看到、复制、脚本报错。
+// 不记录输入内容和复制的文字本身。访问 ?notrack=1 后这个浏览器不再上报（?notrack=0 恢复）。
+const endpoint
+  = import.meta.env.PUBLIC_TRACK_ENDPOINT ?? 'https://dashboard.loki.zaneliu.me/api/v1/public/site/collect'
+---
+
+<script is:inline define:vars={{ endpoint }}>
+  ;(function () {
+    var OFF_KEY = 'zm-notrack'
+    var IDLE_MS = 60000
+    var FLUSH_MS = 15000
+    var MAX_QUEUE = 20
+    var MAX_ERRORS = 5
+
+    // ---- 开关：?notrack=1 / ?notrack=0，处理完从地址栏去掉
+    try {
+      var url = new URL(location.href)
+      var nt = url.searchParams.get('notrack')
+      if (nt === '1')
+        localStorage.setItem(OFF_KEY, '1')
+      else if (nt === '0')
+        localStorage.removeItem(OFF_KEY)
+      if (nt !== null) {
+        url.searchParams.delete('notrack')
+        history.replaceState(history.state, '', url.pathname + url.search + url.hash)
+      }
+      if (localStorage.getItem(OFF_KEY) === '1')
+        return
+    }
+    catch (e) {}
+
+    function rid() {
+      if (window.crypto && crypto.randomUUID)
+        return crypto.randomUUID().replace(/-/g, '')
+      return (Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)).slice(0, 32)
+    }
+    function stored(store, key) {
+      try {
+        var v = store.getItem(key)
+        if (!v) {
+          v = rid()
+          store.setItem(key, v)
+        }
+        return v
+      }
+      catch (e) {
+        return rid()
+      }
+    }
+    function now() { return Math.round(performance.now()) }
+
+    var root = document.documentElement
+    var pv = rid()
+    var vid = stored(localStorage, 'zm-vid')
+    var sid = stored(sessionStorage, 'zm-sid')
+    var queue = []
+    var started = false
+    var errors = 0
+
+    // ---- 停留时长：页面在前台、且 60 秒内有过操作的时间
+    var active = 0
+    var last = performance.now()
+    var lastInput = last
+    var visible = document.visibilityState === 'visible'
+    function tick() {
+      var t = performance.now()
+      if (visible) {
+        var until = Math.min(t, lastInput + IDLE_MS)
+        if (until > last)
+          active += until - last
+      }
+      last = t
+    }
+    function touch() {
+      tick()
+      lastInput = performance.now()
+    }
+    ;['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach(function (ev) {
+      addEventListener(ev, touch, { passive: true, capture: true })
+    })
+    var moveAt = 0
+    addEventListener('mousemove', function () {
+      var t = performance.now()
+      if (t - moveAt > 2000) {
+        moveAt = t
+        touch()
+      }
+    }, { passive: true })
+
+    // ---- 滚动深度
+    var scroll = 0
+    function measure() {
+      var h = Math.max(root.scrollHeight, 1)
+      var p = Math.round(Math.min(100, ((scrollY + innerHeight) / h) * 100))
+      if (p > scroll)
+        scroll = p
+    }
+    addEventListener('scroll', measure, { passive: true })
+
+    // ---- 页面上的位置：区块 key（data-section），不用标题文字，中英文页统计到一起
+    function sectionOf(el) {
+      var s = el && el.closest ? el.closest('[data-section]') : null
+      return s ? s.getAttribute('data-section') : ''
+    }
+    function labelOf(el) {
+      var v = el.getAttribute('data-track') || el.getAttribute('aria-label') || (el.textContent || '').replace(/\s+/g, ' ').trim()
+      if (!v) {
+        var img = el.querySelector && el.querySelector('img[alt]')
+        v = img ? img.getAttribute('alt') : el.tagName.toLowerCase()
+      }
+      return v.slice(0, 120)
+    }
+    function push(e) {
+      e.t = e.t == null ? now() : e.t
+      queue.push(e)
+      if (queue.length >= MAX_QUEUE)
+        flush(false)
+    }
+
+    // ---- 点击：链接、按钮、带 data-track 的元素
+    document.addEventListener('click', function (ev) {
+      var el = ev.target && ev.target.closest ? ev.target.closest('a,button,summary,[role="button"],[role="tab"],[data-track]') : null
+      if (!el)
+        return
+      var a = el.closest('a[href]')
+      var href = a ? a.href : ''
+      var type = 'click'
+      if (href) {
+        try {
+          if (new URL(href, location.href).origin !== location.origin)
+            type = 'outbound'
+        }
+        catch (e) {}
+      }
+      push({ type: type, target: labelOf(el), section: sectionOf(el), href: href.slice(0, 500) })
+      // 点外链可能马上离开页面，先发出去
+      if (type === 'outbound')
+        flush(true)
+    }, true)
+
+    // ---- 弹窗：打开时长
+    var openAt = new Map()
+    function dialogKey(d) { return d.id || sectionOf(d) || 'dialog' }
+    function closeDialog(d) {
+      var t0 = openAt.get(d)
+      if (t0 == null)
+        return
+      openAt.delete(d)
+      push({ type: 'dialog', target: dialogKey(d), section: sectionOf(d), value: now() - t0, t: t0 })
+    }
+    document.querySelectorAll('dialog').forEach(function (d) {
+      new MutationObserver(function () {
+        if (d.open)
+          openAt.set(d, now())
+        else
+          closeDialog(d)
+      }).observe(d, { attributes: true, attributeFilter: ['open'] })
+    })
+
+    // ---- 各区块第一次进入视野（看到超过 35%，或占了半屏）
+    if ('IntersectionObserver' in window) {
+      var seen = {}
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          var key = en.target.getAttribute('data-section')
+          if (!key || seen[key] || !en.isIntersecting)
+            return
+          if (en.intersectionRatio >= 0.35 || en.intersectionRect.height >= innerHeight * 0.5) {
+            seen[key] = true
+            push({ type: 'section', target: key })
+            io.unobserve(en.target)
+          }
+        })
+      }, { threshold: [0, 0.2, 0.35, 0.6] })
+      var watch = function () {
+        document.querySelectorAll('section[data-section],footer[data-section],header[data-section]').forEach(function (el) {
+          if (!el.hidden && !seen[el.getAttribute('data-section')])
+            io.observe(el)
+        })
+      }
+      watch()
+      // 「代码贡献 / AI 用量」等区块是取到数据后才显示的
+      setTimeout(watch, 3000)
+    }
+
+    // ---- 复制（只记字数，不记内容）
+    document.addEventListener('copy', function () {
+      var sel = String(getSelection ? getSelection() : '')
+      var node = getSelection && getSelection().anchorNode
+      push({ type: 'copy', section: sectionOf(node && node.parentElement), value: sel.length })
+    })
+
+    // ---- 脚本报错
+    addEventListener('error', function (ev) {
+      if (errors >= MAX_ERRORS || !ev.message)
+        return
+      errors++
+      var where = ev.filename ? ' @ ' + ev.filename.replace(location.origin, '') + ':' + ev.lineno : ''
+      push({ type: 'error', target: (ev.message + where).slice(0, 200) })
+    })
+
+    // ---- 上报
+    function context() {
+      var dark = root.dataset.theme
+        ? root.dataset.theme === 'dark'
+        : matchMedia('(prefers-color-scheme: dark)').matches
+      return {
+        sid: sid,
+        path: location.pathname,
+        search: location.search,
+        lang: root.dataset.lang || '',
+        ref: document.referrer,
+        screen: screen.width + 'x' + screen.height,
+        viewport: innerWidth + 'x' + innerHeight,
+        dpr: devicePixelRatio || 1,
+        tz: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone || '',
+        langs: (navigator.languages || [navigator.language]).slice(0, 5).join(','),
+        theme: dark ? 'dark' : 'light',
+        touch: (navigator.maxTouchPoints || 0) > 0,
+        webdriver: !!navigator.webdriver,
+      }
+    }
+    function loadMs() {
+      var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0]
+      return nav && nav.loadEventEnd > 0 ? Math.round(nav.loadEventEnd) : undefined
+    }
+    var sentActive = -1
+    var sentScroll = -1
+    var sentLoad = false
+    function flush(final) {
+      tick()
+      measure()
+      if (final)
+        openAt.forEach(function (_, d) { closeDialog(d) })
+      var a = Math.round(active)
+      if (started && !queue.length && a === sentActive && scroll === sentScroll && (sentLoad || !loadMs()))
+        return
+      var body = { pv: pv, vid: vid, t: now(), active: a, scroll: scroll, events: queue.splice(0, 100) }
+      if (!started) {
+        var ctx = context()
+        for (var k in ctx) body[k] = ctx[k]
+        started = true
+      }
+      var load = loadMs()
+      if (load && !sentLoad) {
+        body.load = load
+        sentLoad = true
+      }
+      sentActive = a
+      sentScroll = scroll
+      var json = JSON.stringify(body)
+      try {
+        if ((final || document.visibilityState === 'hidden') && navigator.sendBeacon) {
+          if (navigator.sendBeacon(endpoint, new Blob([json], { type: 'text/plain' })))
+            return
+        }
+        fetch(endpoint, { method: 'POST', body: json, keepalive: true, mode: 'cors', credentials: 'omit', headers: { 'Content-Type': 'text/plain' } }).catch(function () {})
+      }
+      catch (e) {}
+    }
+
+    document.addEventListener('visibilitychange', function () {
+      tick()
+      visible = document.visibilityState === 'visible'
+      if (visible)
+        lastInput = performance.now()
+      else
+        flush(true)
+    })
+    addEventListener('pagehide', function () { flush(true) })
+    setInterval(function () {
+      if (document.visibilityState === 'visible')
+        flush(false)
+    }, FLUSH_MS)
+
+    // 打开就先报一次（带上下文），加载完成后再补一次性能数据
+    flush(false)
+    addEventListener('load', function () { setTimeout(function () { flush(false) }, 0) })
+  })()
+</script>

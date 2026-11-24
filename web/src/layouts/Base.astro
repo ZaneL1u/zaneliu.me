@@ -3,6 +3,7 @@ import '@fontsource/instrument-serif/latin-400.css'
 import '@fontsource/instrument-serif/latin-400-italic.css'
 import type { Lang } from '../i18n'
 import { COPY, LANGS, PATHS } from '../i18n'
+import Track from '../components/Track.astro'
 
 interface Props {
   lang: Lang
@@ -68,6 +69,7 @@ const ogImage = new URL(image, Astro.site)
   </head>
   <body>
     <slot />
+    <Track />
   </body>
 </html>
 

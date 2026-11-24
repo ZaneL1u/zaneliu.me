@@ -31,6 +31,7 @@ const games = c.games
   .filter(x => COVERS[x.cover])
   .map(x => ({
     name: tx(x.name),
+    key: x.cover,
     cover: COVERS[x.cover],
     note: x.note ? tx(x.note) : undefined,
     hours: x.hours ? hoursText(x.hours) : undefined,
@@ -43,26 +44,26 @@ const report = p.report
 <Base lang={lang} title={tx(intro.title)} description={tx(intro.description)}>
   <Toolbar lang={lang} />
   <main class="page">
-    <header class="hero reveal">
+    <header class="hero reveal" data-section="hero">
       <img class="avatar" src="/avatar.jpg" alt="Zane Liu" width="88" height="88" />
       <h1 class="serif">
         {intro.hello[lang][0]}<em>Zane</em>{intro.hello[lang][1]}
       </h1>
       <p class="lead">{tx(intro.lead)}</p>
       <nav class="social" aria-label={t.contact}>
-        <a class="btn" href="https://github.com/ZaneL1u" target="_blank" rel="noopener me">
+        <a class="btn" href="https://github.com/ZaneL1u" target="_blank" rel="noopener me" data-track="github">
           <span class="i-simple-icons-github" aria-hidden="true"></span> GitHub
         </a>
-        <a class="btn" href="mailto:hi@zaneliu.me">
+        <a class="btn" href="mailto:hi@zaneliu.me" data-track="email">
           <span class="i-ph-envelope-simple" aria-hidden="true"></span> hi@zaneliu.me
         </a>
-        <button class="btn" type="button" data-dialog="wechat" aria-haspopup="dialog">
+        <button class="btn" type="button" data-dialog="wechat" data-track="wechat" aria-haspopup="dialog">
           <span class="i-ph-wechat-logo" aria-hidden="true"></span> {t.wechat.label}
         </button>
       </nav>
     </header>
 
-    <section class="reveal" style="--d: 1">
+    <section class="reveal" style="--d: 1" data-section="work">
       <h2>{t.work.title}</h2>
       <p>
         {tx(intro.work_before)}
@@ -73,7 +74,7 @@ const report = p.report
       </div>
     </section>
 
-    <section class="reveal" style="--d: 2">
+    <section class="reveal" style="--d: 2" data-section="personality">
       <h2>{t.personality.title}</h2>
       <div class="mbti">
         <div class="mbti-head">
@@ -81,7 +82,7 @@ const report = p.report
             <div class="mbti-type serif">{p.type}</div>
             <div class="mbti-name">{tx(p.name)}</div>
           </div>
-          <button class="btn btn-sm" type="button" data-dialog="mbti" aria-haspopup="dialog">
+          <button class="btn btn-sm" type="button" data-dialog="mbti" data-track="mbti-details" aria-haspopup="dialog">
             {t.personality.details} <span class="i-ph-arrow-up-right" aria-hidden="true"></span>
           </button>
         </div>
@@ -105,7 +106,7 @@ const report = p.report
       </div>
     </section>
 
-    <section class="reveal" style="--d: 2">
+    <section class="reveal" style="--d: 2" data-section="tools">
       <h2>{t.tools.title}</h2>
       <div class="tool-row">
         <span class="tool-label">{t.tools.languages}</span>
@@ -123,7 +124,7 @@ const report = p.report
 
     <Activity lang={lang} />
 
-    <section class="reveal" style="--d: 3">
+    <section class="reveal" style="--d: 3" data-section="life">
       <h2>{t.life.title}</h2>
       <div class="chips">
         {life.map(item => <Chip {...item} />)}
@@ -143,7 +144,7 @@ const report = p.report
       </div>
     </section>
 
-    <section class="reveal" style="--d: 4">
+    <section class="reveal" style="--d: 4" data-section="games">
       <h2>{g.title}</h2>
       <ul class="games">
         {
@@ -159,6 +160,7 @@ const report = p.report
                       target={game.href ? '_blank' : undefined}
                       rel={game.href ? 'noopener' : undefined}
                       aria-label={game.href ? `${game.name} · ${g.steam}` : undefined}
+                      data-track={`game-${game.key}`}
                     >
                       <div class="cover">
                         <img src={game.cover} alt="" width="360" height="540" loading="lazy" decoding="async" />
@@ -177,14 +179,14 @@ const report = p.report
       </ul>
     </section>
 
-    <footer class="reveal" style="--d: 5">
+    <footer class="reveal" style="--d: 5" data-section="footer">
       <p class="serif sign-off">{tx(intro.sign_off)}</p>
       <p class="fine">© {new Date().getFullYear()} Zane Liu</p>
     </footer>
   </main>
 
-  <dialog class="sheet sheet-qr" id="wechat" aria-labelledby="wechat-title">
-    <button class="sheet-close" type="button" data-close aria-label={t.close}>
+  <dialog class="sheet sheet-qr" id="wechat" aria-labelledby="wechat-title" data-section="dialog-wechat">
+    <button class="sheet-close" type="button" data-close data-track="close" aria-label={t.close}>
       <span class="i-ph-x" aria-hidden="true"></span>
     </button>
     <h2 class="sheet-title serif" id="wechat-title">{t.wechat.title}</h2>
@@ -196,8 +198,8 @@ const report = p.report
     <p class="qr-hint">{t.wechat.longPress}</p>
   </dialog>
 
-  <dialog class="sheet" id="mbti" aria-labelledby="mbti-title">
-    <button class="sheet-close" type="button" data-close aria-label={t.close}>
+  <dialog class="sheet" id="mbti" aria-labelledby="mbti-title" data-section="dialog-mbti">
+    <button class="sheet-close" type="button" data-close data-track="close" aria-label={t.close}>
       <span class="i-ph-x" aria-hidden="true"></span>
     </button>
     <h2 class="sheet-title serif" id="mbti-title">{tx(report.title)}</h2>

@@ -49,7 +49,7 @@ const TEXT = {
 ---
 
 <div class="activity" data-api={api} data-lang={lang} hidden>
-  <section class="reveal" style="--d: 3">
+  <section class="reveal" style="--d: 3" data-section="code">
     <h2>{TEXT.codeTitle}</h2>
     <div class="stats three" data-slot="code-stats"></div>
     <figure class="heat-wrap">
@@ -69,7 +69,7 @@ const TEXT = {
     </div>
   </section>
 
-  <section class="reveal" style="--d: 4">
+  <section class="reveal" style="--d: 4" data-section="ai">
     <h2>{TEXT.aiTitle}</h2>
     <p class="note">{TEXT.aiNote}</p>
     <div class="stats" data-slot="ai-stats"></div>
@@ -87,7 +87,7 @@ const TEXT = {
     </figure>
   </section>
 
-  <section class="reveal" style="--d: 5" data-slot="models-section" hidden>
+  <section class="reveal" style="--d: 5" data-slot="models-section" data-section="models" hidden>
     <h2>{TEXT.modelsTitle}</h2>
     <p class="note">{TEXT.modelsNote}</p>
     <div class="tabs" role="tablist" data-slot="models-tabs">
@@ -99,13 +99,13 @@ const TEXT = {
     <p class="fine-note" data-slot="embeddings"></p>
   </section>
 
-  <section class="reveal" style="--d: 5">
+  <section class="reveal" style="--d: 5" data-section="log">
     <h2>{TEXT.logTitle}</h2>
     <ol class="log" data-slot="log"></ol>
   </section>
 
 
-  <section class="reveal" style="--d: 6" data-slot="oss-section">
+  <section class="reveal" style="--d: 6" data-slot="oss-section" data-section="oss">
     <h2>{TEXT.ossTitle}</h2>
     <p class="note">{TEXT.ossNote}</p>
     <ol class="timeline" data-slot="timeline"></ol>

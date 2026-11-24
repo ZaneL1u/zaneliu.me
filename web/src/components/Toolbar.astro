@@ -11,13 +11,14 @@ const other: Lang = lang === 'en' ? 'zh' : 'en'
 const t = COPY[lang]
 ---
 
-<div class="toolbar">
+<div class="toolbar" data-section="toolbar">
   <a
     class="tool lang-switch"
     href={PATHS[other]}
     hreflang={COPY[other].htmlLang}
     lang={COPY[other].htmlLang}
     data-lang={other}
+    data-track="lang-switch"
   >
     <span class="i-ph-translate" aria-hidden="true"></span>
     {t.switchLang}
@@ -25,6 +26,7 @@ const t = COPY[lang]
   <button
     class="tool theme-switch"
     type="button"
+    data-track="theme-switch"
     aria-label={t.theme.label}
     data-label-system={t.theme.system}
     data-label-light={t.theme.light}
