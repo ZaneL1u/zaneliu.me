@@ -1,14 +1,25 @@
 ---
 import type { Lang } from '../i18n'
+import { loadProfile, PROFILE_API } from '../activity/load'
+import { createView } from '../activity/view'
 
 interface Props {
   lang: Lang
 }
 
-// 代码贡献 / AI 用量 / AI 日报 / 开源贡献。数据来自 dashboard 的公开接口（只有脱敏后的聚合数字），
-// 在浏览器里取，接口不可用时整块隐藏。
-const api = import.meta.env.PUBLIC_PROFILE_API ?? 'https://dashboard.loki.zaneliu.me/api/v1/public/profile'
+// 代码贡献 / AI 用量 / AI 日报 / 开源贡献。数据来自 dashboard 的公开接口（只有脱敏后的聚合数字，只到昨天）。
+// 构建时取一次，直接渲染进 HTML（搜索引擎、无脚本都能看到），同一份数据嵌进页面给交互用，浏览器不再请求接口。
+// 构建时取不到数据：整块先隐藏，浏览器里现取再渲染（兜底）。
+const api = PROFILE_API
 const { lang } = Astro.props
+const profile = await loadProfile()
+const view = profile ? createView(lang).build(profile, Date.now()) : null
+const slots = view?.slots ?? {}
+const html = (k: string) => slots[k]?.html ?? ''
+const text = (k: string) => slots[k]?.text ?? ''
+const hidden = (k: string, dflt = false) => slots[k]?.hidden ?? dflt
+// 嵌进 <script type="application/json">：把 < 转义，避免数据里出现 </script> 截断
+const embedded = profile ? JSON.stringify(profile).replace(/</g, '\\u003c') : ''
 
 const TEXT = {
   en: {
@@ -48,68 +59,68 @@ const TEXT = {
 }[lang]
 ---
 
-<div class="activity" data-api={api} data-lang={lang} hidden>
+<div class="activity" data-api={api} data-lang={lang} hidden={!view}>
+  {embedded && <script type="application/json" data-activity set:html={embedded} />}
   <section class="reveal" style="--d: 3" data-section="code">
     <h2>{TEXT.codeTitle}</h2>
-    <div class="stats three" data-slot="code-stats"></div>
+    <div class="stats three" data-slot="code-stats" set:html={html('code-stats')} />
     <figure class="heat-wrap">
-      <div class="tabs" role="tablist" aria-label={TEXT.years} data-slot="code-tabs"></div>
-      <div class="heat" data-slot="code-heat"></div>
+      <div class="tabs" role="tablist" aria-label={TEXT.years} data-slot="code-tabs" set:html={html('code-tabs')} />
+      <div class="heat" data-slot="code-heat" set:html={html('code-heat')} />
       <figcaption>
-        <span data-slot="code-caption"></span>
+        <span data-slot="code-caption">{text('code-caption')}</span>
         <span class="legend" aria-hidden="true">
           {TEXT.less} <i data-l="0"></i><i data-l="1"></i><i data-l="2"></i><i data-l="3"></i><i data-l="4"></i> {TEXT.more}
         </span>
       </figcaption>
       <p class="fine-note">{TEXT.codeNote}</p>
     </figure>
-    <div class="feed-wrap" data-slot="feed-wrap" hidden>
+    <div class="feed-wrap" data-slot="feed-wrap" hidden={hidden('feed-wrap', true)}>
       <h3 class="sub">{TEXT.activityTitle}</h3>
-      <ul class="feed" data-slot="feed"></ul>
+      <ul class="feed" data-slot="feed" set:html={html('feed')} />
     </div>
   </section>
 
   <section class="reveal" style="--d: 4" data-section="ai">
     <h2>{TEXT.aiTitle}</h2>
     <p class="note">{TEXT.aiNote}</p>
-    <div class="stats" data-slot="ai-stats"></div>
-    <div class="split" data-slot="split"></div>
+    <div class="stats" data-slot="ai-stats" set:html={html('ai-stats')} />
+    <div class="split" data-slot="split" set:html={html('split')} />
     <figure class="heat-wrap">
-      <div class="tabs" role="tablist" aria-label={TEXT.years} data-slot="ai-tabs"></div>
-      <div class="heat" data-slot="ai-heat"></div>
+      <div class="tabs" role="tablist" aria-label={TEXT.years} data-slot="ai-tabs" set:html={html('ai-tabs')} />
+      <div class="heat" data-slot="ai-heat" set:html={html('ai-heat')} />
       <figcaption>
-        <span data-slot="ai-caption"></span>
+        <span data-slot="ai-caption">{text('ai-caption')}</span>
         <span class="legend" aria-hidden="true">
           {TEXT.less} <i data-l="0"></i><i data-l="1"></i><i data-l="2"></i><i data-l="3"></i><i data-l="4"></i> {TEXT.more}
         </span>
       </figcaption>
-      <p class="fine-note" data-slot="ai-since"></p>
+      <p class="fine-note" data-slot="ai-since">{text('ai-since')}</p>
     </figure>
   </section>
 
-  <section class="reveal" style="--d: 5" data-slot="models-section" data-section="models" hidden>
+  <section class="reveal" style="--d: 5" data-slot="models-section" data-section="models" hidden={hidden('models-section', true)}>
     <h2>{TEXT.modelsTitle}</h2>
     <p class="note">{TEXT.modelsNote}</p>
     <div class="tabs" role="tablist" data-slot="models-tabs">
       <button type="button" role="tab" data-range="all" aria-selected="true">{TEXT.allTime}</button>
       <button type="button" role="tab" data-range="month" aria-selected="false">{TEXT.last30}</button>
     </div>
-    <div class="sources" data-slot="models-sources"></div>
-    <ol class="models" data-slot="models"></ol>
-    <p class="fine-note" data-slot="embeddings"></p>
+    <div class="sources" data-slot="models-sources" set:html={html('models-sources')} />
+    <ol class="models" data-slot="models" set:html={html('models')} />
+    <p class="fine-note" data-slot="embeddings">{text('embeddings')}</p>
   </section>
 
   <section class="reveal" style="--d: 5" data-section="log">
     <h2>{TEXT.logTitle}</h2>
-    <ol class="log" data-slot="log"></ol>
+    <ol class="log" data-slot="log" set:html={html('log')} />
   </section>
 
-
-  <section class="reveal" style="--d: 6" data-slot="oss-section" data-section="oss">
+  <section class="reveal" style="--d: 6" data-slot="oss-section" data-section="oss" hidden={hidden('oss-section')}>
     <h2>{TEXT.ossTitle}</h2>
     <p class="note">{TEXT.ossNote}</p>
-    <ol class="timeline" data-slot="timeline"></ol>
-    <button type="button" class="more" data-slot="more" hidden></button>
+    <ol class="timeline" data-slot="timeline" set:html={html('timeline')} />
+    <button type="button" class="more" data-slot="more" hidden={hidden('more', true)}>{text('more')}</button>
   </section>
 </div>
 
@@ -808,237 +819,20 @@ const TEXT = {
 </style>
 
 <script>
-  type Commits = { github: number, gitea: number }
-  type Day = { date: string, tokens: number, sessions: number, commits: Commits }
-  type Window = {
-    tokens: number
-    tokens_by_tool: Record<string, number>
-    sessions: number
-    sessions_by_tool: Record<string, number>
-    commits: Commits
-  }
-  type Report = {
-    date: string
-    sessions: Record<string, number>
-    tokens: number
-    scope: Record<string, number>
-    kinds: { key: string, count: number }[]
-    tech: { key: string, count: number }[]
-    peak_hour?: number | null
-    commits: Commits
-    github?: GhDayItem[]
-    first_hour?: number | null
-    last_hour?: number | null
-    projects?: Record<string, number>
-  }
-  type GhDayItem = { type: string, repo: string, title?: string, action?: string, url?: string, count?: number, stars?: number }
-  type OssItem = { kind?: 'pr' | 'own', repo: string, title: string, url?: string, merged_at: string, stars: number, language?: string | null }
-  type GhEvent = { id: string, type: string, repo: string, created_at: string, action?: string, title?: string, url?: string, ref?: string, ref_type?: string, commits?: number }
-  type Repo = { repo: string, prs: number, stars?: number, description?: string, language?: string | null }
-  type Profile = {
-    calendar: { start: string, days: number[][] }
-    years: string[]
-    totals: { all: Window, year: Window, month: Window, week: Window }
-    since: { ai: string | null, tokens: string | null }
-    streak: number
-    active_days: number
-    reports: Report[]
-    github: { user: string, repos: Repo[], timeline?: OssItem[] }
-    activity?: GhEvent[]
-    day_details?: Record<string, { models?: [string, number][], tools?: Record<string, number>, github?: GhDayItem[] }>
-    usage?: {
-      all: UsageRange
-      month: UsageRange
-      embeddings: { model: string, builds: number, tokens: number }[]
-    }
-  }
-  type UsageRange = {
-    models: { model: string, tokens: number, requests: number, sources: string[] }[]
-    sources: { source: string, tokens: number, requests: number }[]
-  }
+  // 交互：年份切换、热力图悬停详情、日报「展开」、模型「全部 / 近 30 天」、开源「展示更多」。
+  // 数据用构建时嵌进页面的那一份（和 HTML 里已经渲染好的内容同源）；构建时没取到才现取接口兜底。
+  import type { Lang, Profile } from '../activity/view'
+  import { createView } from '../activity/view'
 
-  const TOOLS = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor' } as const
-  type Tool = keyof typeof TOOLS
-  const STAR = '<svg class="star" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>'
   const root = document.querySelector<HTMLElement>('.activity')!
-  const isZh = root.dataset.lang === 'zh'
-
-  const SOURCE_NAME: Record<string, [string, string]> = {
-    personal: ['Personal', '个人'],
-    multica: ['Multica', 'Multica'],
-    'coding-agent': ['Coding agents', 'Coding Agent'],
-    friday: ['Friday', 'Friday'],
-    loopforge: ['LoopForge', 'LoopForge'],
-  }
-  const VENDOR_COLOR: [RegExp, string][] = [
-    [/^claude/i, '#d97757'],
-    [/^(gpt|o\d|codex)/i, '#10a37f'],
-    [/^qwen/i, '#7c5cff'],
-    [/^glm/i, '#3b82f6'],
-    [/^deepseek/i, '#4d6bfe'],
-    [/^(k\d|kimi)/i, '#1f2937'],
-    [/^mimo/i, '#ff6900'],
-    [/^gemini/i, '#4285f4'],
-  ]
-  // 模型图标（站内文件）：各家官方标志。mono：单色标志按文字颜色着色（暗色主题下也看得见）。没匹配上的退回圆点。
-  const MODEL_ICON: [RegExp, string, boolean][] = [
-    [/^claude/i, '/icons/tech/claude.svg', false],
-    [/^(gpt|o\d|codex|chatgpt)/i, '/icons/tech/openai.svg', true],
-    [/^qwen/i, '/icons/models/qwen.svg', false],
-    [/^glm/i, '/icons/models/zai.svg', true],
-    [/^deepseek/i, '/icons/models/deepseek.svg', false],
-    [/^gemini/i, '/icons/models/gemini.svg', false],
-    [/^(k\d|kimi)/i, '/icons/models/kimi.svg', true],
-    [/^(minimax|abab)/i, '/icons/models/minimax.svg', false],
-  ]
-
-  const L = isZh
-    ? {
-        locale: 'zh-CN',
-        kinds: {
-          feature: '新功能开发', fix: '问题修复', refactor: '重构优化', ops: '部署运维',
-          research: '调研问答', docs: '文档写作', review: '代码审查', test: '测试',
-        } as Record<string, string>,
-        scope: { work: '工作', personal: '个人项目', oss: '开源', other: '其他' } as Record<string, string>,
-        sentence: (k: string[], tech: string[]) =>
-          `${k.length ? `以${k.join('和')}为主` : '各种事情都做了一点'}${tech.length ? `，用到 ${tech.join('、')}` : ''}。`,
-        lastYear: '近一年',
-        tokensAll: '累计 token', sessionsAll: '累计会话', activeDays: '活跃天数', streak: '连续天数',
-        streakValue: (n: number) => `${n} 天`,
-        split: (tool: string, n: string, t: string | null) => `${tool} · ${n} 次会话${t ? ` · ${t} token` : ''}`,
-        dayAi: (t: number, n: number) => (t ? `${compact(t)} token，${n} 次会话` : `${n} 次会话`),
-        noAi: '没有 AI 会话',
-        aiCaption: (n: number, t: string, label: string) => `${label}：${n.toLocaleString('zh-CN')} 次会话，共 ${t} token。`,
-        since: (s: string | null, t: string | null) =>
-          `会话从 ${s ?? '—'} 开始统计，token 从 ${t ?? '—'} 开始统计：更早的日志没有 token 记录，Cursor 本地也不记录 token。`,
-        sessions: (n: number) => `${n} 次会话`,
-        tokens: (t: string) => `${t} token`,
-        contrib: (n: number) => `${n} 次贡献`,
-        empty: '这周没有会话，大概是滑雪去了。',
-        contribAll: '累计贡献', privateRepos: '私有存储库',
-        noContrib: '没有贡献',
-        dayContrib: (n: number, parts: string[]) => `${n} 次贡献（${parts.join('，')}）`,
-        codeCaption: (n: number, label: string) => `${label}：${n.toLocaleString('zh-CN')} 次贡献。`,
-        prs: (n: number) => `${n} 个 PR`,
-        more: (n: number) => `展示更多 +${n}`,
-        ownBadge: '我的项目',
-        expand: (n: number) => `展开 +${n}`,
-        detail: (o: { tools: string, hours: string, kinds: string, projects: string }) =>
-          [o.tools, o.hours, o.kinds && `具体：${o.kinds}`, o.projects].filter(Boolean).join('；') + '。',
-        hoursText: (a: number, b: number, peak: number | null) => (a === b ? `${a} 点前后` : `${a} 点到 ${b} 点${peak != null ? `，${peak} 点最忙` : ''}`),
-        projectsText: (parts: string[]) => (parts.length ? `涉及 ${parts.join('、')}` : ''),
-        projectScope: { personal: ' 个个人项目', oss: ' 个开源项目', work: ' 个工作项目', other: ' 个其他目录' } as Record<string, string>,
-        tipSessions: '会话', tipTokens: 'token', tipModels: '主要模型', tipGithub: 'GitHub 动态', tipNone: '这天没有记录',
-        collapse: '收起',
-        dayKinds: { MergedPR: '合入', PullRequestEvent: 'PR', ReleaseEvent: '发布', PublicEvent: '开源', CreateEvent: '新仓库', IssuesEvent: 'Issue', PushEvent: '推送' } as Record<string, string>,
-        pushes: (n: number) => `${n} 次推送`,
-        events: { PushEvent: '推送', PullRequestEvent: 'PR', CreateEvent: '新建', ReleaseEvent: '发布', WatchEvent: '点星', ForkEvent: 'Fork', IssuesEvent: 'Issue', PublicEvent: '开源' } as Record<string, string>,
-        commits: (n: number) => `${n} 个提交`,
-        ago: (d: number) => (d < 1 ? '今天' : d < 2 ? '昨天' : d < 30 ? `${Math.floor(d)} 天前` : d < 365 ? `${Math.floor(d / 30)} 个月前` : `${Math.floor(d / 365)} 年前`),
-        modelVal: (t: string, r: string) => `${t} token · ${r} 次请求`,
-        embedding: (m: string, n: string) => `Embedding：${m}，构建索引 ${n} 次（平台没有记录 embedding 的 token 数）。`,
-      }
-    : {
-        locale: 'en-US',
-        kinds: {
-          feature: 'building features', fix: 'fixing bugs', refactor: 'refactoring', ops: 'ops and deploys',
-          research: 'research and Q&A', docs: 'writing docs', review: 'reviewing code', test: 'testing',
-        } as Record<string, string>,
-        scope: { work: 'work', personal: 'side projects', oss: 'open source', other: 'misc' } as Record<string, string>,
-        sentence: (k: string[], tech: string[]) =>
-          `${k.length ? `Mostly ${k[0]}${k[1] ? `, plus ${k[1]}` : ''}` : 'A mixed bag'}${tech.length ? `. Worked in ${joinWords(tech)}` : ''}.`,
-        lastYear: 'Last 12 months',
-        tokensAll: 'tokens, all time', sessionsAll: 'sessions, all time', activeDays: 'active days', streak: 'current streak',
-        streakValue: (n: number) => `${n}d`,
-        split: (tool: string, n: string, t: string | null) => `${tool} · ${n} sessions${t ? ` · ${t} tokens` : ''}`,
-        dayAi: (t: number, n: number) => (t ? `${compact(t)} tokens, ${n} sessions` : `${n} sessions`),
-        noAi: 'no AI sessions',
-        aiCaption: (n: number, t: string, label: string) => `${label}: ${n.toLocaleString('en-US')} sessions, ${t} tokens.`,
-        since: (s: string | null, t: string | null) =>
-          `Sessions counted since ${s ?? '—'}, tokens since ${t ?? '—'}. Older logs have no token data, and Cursor doesn't keep it locally.`,
-        sessions: (n: number) => `${n} sessions`,
-        tokens: (t: string) => `${t} tokens`,
-        contrib: (n: number) => `${n} contributions`,
-        empty: 'No sessions this week. Probably out skiing.',
-        contribAll: 'contributions, all time', privateRepos: 'private repos',
-        noContrib: 'no contributions',
-        dayContrib: (n: number, parts: string[]) => `${n} contributions (${parts.join(', ')})`,
-        codeCaption: (n: number, label: string) => `${label}: ${n.toLocaleString('en-US')} contributions.`,
-        prs: (n: number) => `${n} PR${n > 1 ? 's' : ''}`,
-        more: (n: number) => `Show ${n} more`,
-        ownBadge: 'My project',
-        expand: (n: number) => `Show ${n} more`,
-        detail: (o: { tools: string, hours: string, kinds: string, projects: string }) =>
-          [o.tools, o.hours, o.kinds && `breakdown: ${o.kinds}`, o.projects].filter(Boolean).join('; ') + '.',
-        hoursText: (a: number, b: number, peak: number | null) => (a === b ? `around ${a}:00` : `${a}:00 to ${b}:00${peak != null ? `, busiest at ${peak}:00` : ''}`),
-        projectsText: (parts: string[]) => (parts.length ? `across ${parts.join(', ')}` : ''),
-        projectScope: { personal: ' side projects', oss: ' open-source projects', work: ' work projects', other: ' other folders' } as Record<string, string>,
-        tipSessions: 'sessions', tipTokens: 'tokens', tipModels: 'Top models', tipGithub: 'GitHub', tipNone: 'Nothing recorded',
-        collapse: 'Show less',
-        dayKinds: { MergedPR: 'Merged', PullRequestEvent: 'PR', ReleaseEvent: 'Release', PublicEvent: 'Public', CreateEvent: 'New repo', IssuesEvent: 'Issue', PushEvent: 'Push' } as Record<string, string>,
-        pushes: (n: number) => `${n} push${n > 1 ? 'es' : ''}`,
-        events: { PushEvent: 'Push', PullRequestEvent: 'PR', CreateEvent: 'Create', ReleaseEvent: 'Release', WatchEvent: 'Star', ForkEvent: 'Fork', IssuesEvent: 'Issue', PublicEvent: 'Public' } as Record<string, string>,
-        commits: (n: number) => `${n} commit${n > 1 ? 's' : ''}`,
-        ago: (d: number) => (d < 1 ? 'today' : d < 2 ? 'yesterday' : d < 30 ? `${Math.floor(d)}d ago` : d < 365 ? `${Math.floor(d / 30)}mo ago` : `${Math.floor(d / 365)}y ago`),
-        modelVal: (t: string, r: string) => `${t} tokens · ${r} requests`,
-        embedding: (m: string, n: string) => `Embeddings: ${m}, ${n} index builds (the platform doesn't record embedding tokens).`,
-      }
-
+  const lang = (root.dataset.lang === 'zh' ? 'zh' : 'en') as Lang
   const slot = (name: string) => root.querySelector<HTMLElement>(`[data-slot="${name}"]`)!
-  const esc = (s: string) => s.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`)
-  const num = (n: number) => n.toLocaleString(L.locale)
 
-  function trim(x: number): string {
-    return x.toFixed(x >= 100 ? 0 : 1).replace(/\.0$/, '')
-  }
-
-  /** 大数字缩写：英文 K/M/B/T，中文 万/亿/万亿 */
-  function compact(n: number): string {
-    const units: [number, string][] = isZh
-      ? [[1e12, ' 万亿'], [1e8, ' 亿'], [1e4, ' 万']]
-      : [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']]
-    for (const [v, u] of units) {
-      if (n >= v)
-        return `${trim(n / v)}${u}`
-    }
-    return String(n)
-  }
-
-  function joinWords(items: string[]): string {
-    if (items.length <= 1)
-      return items.join('')
-    return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
-  }
-
-  function parseDay(s: string): Date {
-    const [y, m, d] = s.split('-').map(Number)
-    return new Date(y, m - 1, d)
-  }
-
-  function iso(d: Date): string {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  }
-
-  const fmtShort = new Intl.DateTimeFormat(L.locale, { month: 'short', day: 'numeric' })
-  const fmtLong = new Intl.DateTimeFormat(L.locale, { year: 'numeric', month: 'short', day: 'numeric' })
-  const fmtWeekday = new Intl.DateTimeFormat(L.locale, { weekday: 'short' })
-
-  /** 按非零值的分位数分 4 档，避免一两天的峰值把其余日子都压成最浅色 */
-  function levels(values: number[]): (v: number) => number {
-    const nz = values.filter(v => v > 0).sort((a, b) => a - b)
-    if (!nz.length)
-      return () => 0
-    const q = (p: number) => nz[Math.min(nz.length - 1, Math.floor(p * nz.length))]
-    const cuts = [q(0.25), q(0.5), q(0.75)]
-    return v => (v <= 0 ? 0 : v <= cuts[0] ? 1 : v <= cuts[1] ? 2 : v <= cuts[2] ? 3 : 4)
-  }
-
-  // 悬停详情：整页一个浮层，热力图格子带 data-d（日期），内容由各自的 tip 函数生成
+  // 悬停详情：整页一个浮层，热力图格子带 data-d（日期）
   const tip = document.createElement('div')
   tip.className = 'heat-tip'
   tip.hidden = true
   document.body.appendChild(tip)
-  const tipFns = new WeakMap<HTMLElement, (date: string) => string>()
   function showTip(cell: HTMLElement, html: string) {
     tip.innerHTML = html
     tip.hidden = false
@@ -1050,198 +844,58 @@ const TEXT = {
     tip.style.left = `${left}px`
     tip.style.top = `${top}px`
   }
-  function bindTip(el: HTMLElement, fn: (date: string) => string) {
-    tipFns.set(el, fn)
-    if (el.dataset.tipBound)
-      return
-    el.dataset.tipBound = '1'
-    const handler = (e: Event) => {
-      const cell = (e.target as HTMLElement).closest<HTMLElement>('i[data-d]')
-      if (!cell)
-        return
-      showTip(cell, tipFns.get(el)!(cell.dataset.d!))
-    }
-    el.addEventListener('mouseover', handler)
-    el.addEventListener('click', handler)
-    el.addEventListener('mouseleave', () => (tip.hidden = true))
-  }
   window.addEventListener('scroll', () => (tip.hidden = true), { passive: true })
 
-  function drawHeatmap(el: HTMLElement, days: Day[], value: (d: Day) => number, label: (d: Day) => string) {
-    if (!days.length) {
-      el.innerHTML = ''
-      return
-    }
-    const level = levels(days.map(value))
-    const first = parseDay(days[0].date).getDay() // 0 = 周日，与 GitHub 一样从周日开始
-    const cells: string[] = Array.from({ length: first }, () => '<i class="pad"></i>')
-    for (const d of days) {
-      const text = `${fmtLong.format(parseDay(d.date))}: ${label(d)}`
-      cells.push(`<i data-l="${level(value(d))}" data-d="${d.date}" aria-label="${esc(text)}"></i>`)
-    }
-    el.innerHTML = cells.join('')
-    // 手机上横向滚动时默认停在最近的日子
+  /** 手机上横向滚动的热力图默认停在最近的日子 */
+  function scrollHeat(el: HTMLElement) {
     requestAnimationFrame(() => (el.scrollLeft = el.scrollWidth))
   }
 
-  /** 年份切换：「近一年」+ 有数据的每一年 */
-  function yearTabs(
-    tabsEl: HTMLElement,
-    years: string[],
-    all: Day[],
-    onPick: (range: { label: string, days: Day[] }) => void,
-  ) {
-    const options = [
-      { key: 'recent', label: L.lastYear, days: all.slice(-365) },
-      ...years.map(y => ({ key: y, label: y, days: all.filter(d => d.date.startsWith(y)) })),
-    ]
-    tabsEl.innerHTML = options
-      .map((o, i) => `<button type="button" role="tab" data-key="${o.key}" aria-selected="${i === 0}">${esc(o.label)}</button>`)
-      .join('')
-    tabsEl.addEventListener('click', (e) => {
-      const btn = (e.target as HTMLElement).closest('button')
-      if (!btn)
-        return
-      tabsEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-selected', String(b === btn)))
-      onPick(options.find(x => x.key === btn.dataset.key)!)
-    })
-    onPick(options[0])
-  }
-
-  function stat(value: string, label: string): string {
-    return `<div class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></div>`
-  }
-
-  /** 日报的第二行：工具分布、时间段、各类事情的次数、涉及的项目数（不出现项目名） */
-  function dayDetail(r: Report): string {
-    const sep = isZh ? '、' : ', '
-    const tools = Object.entries(r.sessions).filter(([, n]) => n > 0)
-      .map(([t, n]) => `${TOOLS[t as Tool] ?? t} ${n}`).join(' · ')
-    const hours = r.first_hour != null && r.last_hour != null ? L.hoursText(r.first_hour, r.last_hour, r.peak_hour ?? null) : ''
-    const kinds = r.kinds.map(k => L.kinds[k.key] ? `${L.kinds[k.key]} ${k.count}` : '').filter(Boolean).join(sep)
-    const projects = L.projectsText(
-      Object.entries(r.projects ?? {}).filter(([, n]) => n > 0)
-        .map(([k, n]) => `${n}${L.projectScope[k] ?? ` ${k}`}`),
-    )
-    return L.detail({ tools, hours, kinds, projects })
-  }
-
-  function describe(r: Report): string {
-    const kinds = r.kinds.slice(0, 2).map(k => L.kinds[k.key]).filter(Boolean)
-    const tech = r.tech.filter(t => t.key !== 'Markdown').slice(0, 3).map(t => t.key)
-    return L.sentence(kinds, tech)
-  }
-
-  function expand(cal: Profile['calendar']): Day[] {
-    const start = parseDay(cal.start)
-    return cal.days.map(([tokens, sessions, github, gitea], i) => {
-      const d = new Date(start)
-      d.setDate(start.getDate() + i)
-      return { date: iso(d), tokens, sessions, commits: { github: github ?? 0, gitea: gitea ?? 0 } }
-    })
-  }
-
-  const commitsOf = (d: Day) => d.commits.github + d.commits.gitea
-
-  function render(p: Profile) {
-    const days = expand(p.calendar)
-    const byDate = new Map(days.map(d => [d.date, d]))
-    const details = p.day_details ?? {}
-    const row = (k: string, v: string) => `<div class="row"><span>${esc(k)}</span><span>${esc(v)}</span></div>`
-    const ghLine = (it: GhDayItem) => {
-      const extra = it.type === 'PushEvent' ? L.pushes(it.count ?? 1) : (it.title ?? '')
-      return `<div class="gh">${esc(L.dayKinds[it.type] ?? it.type)} · ${esc(it.repo)}${extra ? ` · ${esc(extra)}` : ''}</div>`
+  /** 把一份 view 的初始内容写进各个 slot（只在构建时没渲染的兜底情况下用） */
+  function fill(slots: Record<string, { html?: string, text?: string, hidden?: boolean }>) {
+    for (const [name, s] of Object.entries(slots)) {
+      const el = slot(name)
+      if (!el)
+        continue
+      if (s.html !== undefined)
+        el.innerHTML = s.html
+      if (s.text !== undefined)
+        el.textContent = s.text
+      if (s.hidden !== undefined)
+        el.hidden = s.hidden
     }
-    const codeTip = (date: string) => {
-      const d = byDate.get(date)
-      const det = details[date]
-      const parts = [`<b>${esc(fmtLong.format(parseDay(date)))}</b>`]
-      if (!d || !commitsOf(d))
-        parts.push(`<div class="row"><span>${esc(L.noContrib)}</span></div>`)
-      else
-        parts.push(row('GitHub', num(d.commits.github)), row(L.privateRepos, num(d.commits.gitea)))
-      if (det?.github?.length)
-        parts.push(`<div class="sep">${esc(L.tipGithub)}</div>`, ...det.github.map(ghLine))
-      return parts.join('')
-    }
-    const aiTip = (date: string) => {
-      const d = byDate.get(date)
-      const det = details[date]
-      const parts = [`<b>${esc(fmtLong.format(parseDay(date)))}</b>`]
-      if (!d || (!d.sessions && !d.tokens))
-        return parts.concat(`<div class="row"><span>${esc(L.tipNone)}</span></div>`).join('')
-      for (const [t, n] of Object.entries(det?.tools ?? {}))
-        parts.push(row(TOOLS[t as Tool] ?? t, `${num(n)} ${L.tipSessions}`))
-      if (d.tokens)
-        parts.push(row(L.tipTokens, compact(d.tokens)))
-      if (det?.models?.length)
-        parts.push(`<div class="sep">${esc(L.tipModels)}</div>`, ...det.models.map(([m, t]) => row(m, compact(t))))
-      return parts.join('')
-    }
+  }
 
-    // ---------- 代码贡献 ----------
-    const c = p.totals.all.commits
-    slot('code-stats').innerHTML = [
-      stat(num(c.github + c.gitea), L.contribAll),
-      stat(num(c.github), 'GitHub'),
-      stat(num(c.gitea), L.privateRepos),
-    ].join('')
-    const codeYears = p.years.filter(y => days.some(d => d.date.startsWith(y) && commitsOf(d) > 0))
-    yearTabs(slot('code-tabs'), codeYears, days, ({ label, days: list }) => {
-      drawHeatmap(slot('code-heat'), list, commitsOf, (d) => {
-        const n = commitsOf(d)
-        if (!n)
-          return L.noContrib
-        const parts = ([['GitHub', d.commits.github], [L.privateRepos, d.commits.gitea]] as [string, number][])
-          .filter(([, v]) => v).map(([k, v]) => `${k} ${v}`)
-        return L.dayContrib(n, parts)
+  function bind(p: Profile) {
+    const v = createView(lang).build(p)
+
+    const heatTabs = (tabsName: string, heatName: string, captionName: string, view: typeof v.codeView, tipFn: (d: string) => string) => {
+      const tabs = slot(tabsName)
+      const heat = slot(heatName)
+      tabs.addEventListener('click', (e) => {
+        const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button')
+        if (!btn)
+          return
+        tabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-selected', String(b === btn)))
+        const out = view(btn.dataset.key!)
+        heat.innerHTML = out.heat
+        slot(captionName).textContent = out.caption
+        scrollHeat(heat)
       })
-      slot('code-caption').textContent = L.codeCaption(list.reduce((a, d) => a + commitsOf(d), 0), label)
-    })
-    bindTip(slot('code-heat'), codeTip)
-
-    // ---------- AI 用量 ----------
-    const all = p.totals.all
-    slot('ai-stats').innerHTML = [
-      stat(compact(all.tokens), L.tokensAll),
-      stat(num(all.sessions), L.sessionsAll),
-      stat(num(p.active_days), L.activeDays),
-      stat(L.streakValue(p.streak), L.streak),
-    ].join('')
-
-    const totalSessions = all.sessions || 1
-    const tools = (Object.keys(TOOLS) as Tool[])
-      .map(t => ({ t, sessions: all.sessions_by_tool[t] ?? 0, tokens: all.tokens_by_tool[t] ?? 0 }))
-      .filter(x => x.sessions || x.tokens)
-    slot('split').innerHTML = `
-      <div class="bar">${tools.map(x => `<i style="width:${((x.sessions / totalSessions) * 100).toFixed(2)}%;background:var(--${x.t})"></i>`).join('')}</div>
-      <div class="keys">${tools.map(x => `<span><span class="dot" style="background:var(--${x.t})"></span>${esc(L.split(TOOLS[x.t], num(x.sessions), x.tokens ? compact(x.tokens) : null))}</span>`).join('')}</div>`
-
-    // 没有 token 的早期日子按会话数着色（权重压低，有 token 的日子总是更深）
-    const aiValue = (d: Day) => d.tokens || d.sessions / 1e6
-    const aiFrom = (p.since.ai ?? days[days.length - 1].date).slice(0, 4)
-    yearTabs(slot('ai-tabs'), p.years.filter(y => y >= aiFrom), days, ({ label, days: list }) => {
-      drawHeatmap(slot('ai-heat'), list, aiValue, d => (d.sessions || d.tokens ? L.dayAi(d.tokens, d.sessions) : L.noAi))
-      const n = list.reduce((a, d) => a + d.sessions, 0)
-      const t = list.reduce((a, d) => a + d.tokens, 0)
-      slot('ai-caption').textContent = L.aiCaption(n, compact(t), label)
-    })
-    bindTip(slot('ai-heat'), aiTip)
-    slot('ai-since').textContent = L.since(p.since.ai, p.since.tokens)
-
-    // ---------- AI 日报 ----------
-    // 当天的 GitHub 动态（开源合入、PR、发布、推送……）：默认 3 条，其余点「展开」
-    const ghList = (items: GhDayItem[]) => {
-      if (!items.length)
-        return ''
-      const rows = items.map((it, i) => {
-        const [owner, name] = it.repo.split('/')
-        const extra = it.type === 'PushEvent' ? L.pushes(it.count ?? 1) : [it.action !== 'merged' ? it.action : '', it.title].filter(Boolean).join(' ')
-        return `<li${i >= 3 ? ' hidden data-extra' : ''}><span class="k">${esc(L.dayKinds[it.type] ?? it.type)}</span><a href="${esc(it.url || `https://github.com/${it.repo}`)}" target="_blank" rel="noopener">${esc(owner)}/<b>${esc(name ?? '')}</b>${extra ? ` · ${esc(extra)}` : ''}</a></li>`
-      }).join('')
-      const more = items.length > 3 ? `<button type="button" class="gh-more" data-n="${items.length - 3}">${esc(L.expand(items.length - 3))}</button>` : ''
-      return `<ul class="gh">${rows}</ul>${more}`
+      const handler = (e: Event) => {
+        const cell = (e.target as HTMLElement).closest<HTMLElement>('i[data-d]')
+        if (cell)
+          showTip(cell, tipFn(cell.dataset.d!))
+      }
+      heat.addEventListener('mouseover', handler)
+      heat.addEventListener('click', handler)
+      heat.addEventListener('mouseleave', () => (tip.hidden = true))
+      scrollHeat(heat)
     }
+    heatTabs('code-tabs', 'code-heat', 'code-caption', v.codeView, v.codeTip)
+    heatTabs('ai-tabs', 'ai-heat', 'ai-caption', v.aiView, v.aiTip)
+
+    // 日报里当天 GitHub 动态的「展开 / 收起」
     slot('log').addEventListener('click', (e) => {
       const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.gh-more')
       if (!btn)
@@ -1250,135 +904,44 @@ const TEXT = {
       const open = btn.dataset.open !== '1'
       list.querySelectorAll<HTMLElement>('[data-extra]').forEach(li => (li.hidden = !open))
       btn.dataset.open = open ? '1' : '0'
+      const { L } = createView(lang)
       btn.textContent = open ? L.collapse : L.expand(Number(btn.dataset.n))
     })
-    slot('log').innerHTML = p.reports.length
-      ? p.reports.map((r) => {
-          const d = parseDay(r.date)
-          const scope = Object.entries(r.scope).filter(([, n]) => n > 0)
-            .sort((a, b) => b[1] - a[1])
-            .map(([k, n]) => `<span class="tag">${esc(L.scope[k] ?? k)} ${n}</span>`)
-          const commits = r.commits.github + r.commits.gitea
-          const sessions = Object.values(r.sessions).reduce((a, b) => a + b, 0)
-          return `<li>
-            <time datetime="${r.date}">${fmtShort.format(d)}<small>${fmtWeekday.format(d)}</small></time>
-            <div>
-              <p class="what">${esc(describe(r))}</p>
-              <p class="detail">${esc(dayDetail(r))}</p>
-              <div class="meta">
-                <span class="tag">${L.sessions(sessions)}</span>
-                ${r.tokens ? `<span class="tag">${L.tokens(compact(r.tokens))}</span>` : ''}
-                ${commits ? `<span class="tag">${L.contrib(commits)}</span>` : ''}
-                ${scope.join('')}
-              </div>
-              ${ghList(r.github ?? [])}
-            </div>
-          </li>`
-        }).join('')
-      : `<li>${L.empty}</li>`
 
-    // ---------- 模型消耗 ----------
-    const u = p.usage
-    if (u && (u.all.models.length || u.embeddings.length)) {
-      const srcName = (s: string) => (SOURCE_NAME[s] ?? [s, s])[isZh ? 1 : 0]
-      const color = (m: string) => VENDOR_COLOR.find(([re]) => re.test(m))?.[1] ?? 'var(--faint)'
-      const icon = (m: string) => {
-        const hit = MODEL_ICON.find(([re]) => re.test(m))
-        if (!hit)
-          return `<i class="m-dot" style="background:${color(m)}"></i>`
-        const [, src, mono] = hit
-        return mono
-          ? `<i class="m-icon m-mask" style="--icon:url(${src})" aria-hidden="true"></i>`
-          : `<img class="m-icon" src="${src}" alt="" width="18" height="18" loading="lazy" decoding="async">`
-      }
-      const drawModels = (range: 'all' | 'month') => {
-        const r = u[range]
-        const max = Math.max(1, ...r.models.map(m => m.tokens))
-        slot('models-sources').innerHTML = r.sources
-          .map(s => `<span>${esc(srcName(s.source))} <b>${compact(s.tokens)}</b></span>`)
-          .join('')
-        slot('models').innerHTML = r.models.slice(0, 10).map(m => `<li>
-            <span class="m-name">${icon(m.model)}<span>${esc(m.model)}</span><small>${esc(m.sources.map(srcName).join(' · '))}</small></span>
-            <span class="m-val">${esc(L.modelVal(compact(m.tokens), num(m.requests)))}</span>
-            <span class="m-bar"><i style="width:${Math.max(1, (m.tokens / max) * 100).toFixed(2)}%;background:${color(m.model)}"></i></span>
-          </li>`).join('')
-      }
-      const tabs = slot('models-tabs')
-      tabs.addEventListener('click', (e) => {
-        const btn = (e.target as HTMLElement).closest('button')
-        if (!btn)
-          return
-        tabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-selected', String(b === btn)))
-        drawModels(btn.dataset.range as 'all' | 'month')
-      })
-      drawModels('all')
-      slot('embeddings').textContent = u.embeddings
-        .map(e => L.embedding(e.model, num(e.builds)))
-        .join(' ')
-      slot('models-section').hidden = false
-    }
-
-    // ---------- 开源贡献（后端已按星数排序并过滤） ----------
-    const daysAgo = (iso: string) => (Date.now() - new Date(iso).getTime()) / 86_400_000
-
-    // ---------- 最近动态（GitHub 公开动态归档） ----------
-    const feed = (p.activity ?? []).slice(0, 8)
-    slot('feed').innerHTML = feed.map((e) => {
-      const [owner, name] = e.repo.split('/')
-      const extra = e.type === 'PushEvent'
-        ? [e.ref, e.commits ? L.commits(e.commits) : ''].filter(Boolean).join(' · ')
-        : e.type === 'CreateEvent' ? `${e.ref_type ?? ''} ${e.ref ?? ''}`.trim() : (e.title ?? '')
-      return `<li>
-        <span class="kind">${esc(L.events[e.type] ?? e.type)}</span>
-        <a class="what" href="${esc(e.url || `https://github.com/${e.repo}`)}" target="_blank" rel="noopener"><span>${esc(owner)}/</span>${esc(name ?? '')}${extra ? ` <span>· ${esc(extra)}</span>` : ''}</a>
-        <time datetime="${esc(e.created_at)}">${esc(L.ago(daysAgo(e.created_at)))}</time>
-      </li>`
-    }).join('')
-    slot('feed-wrap').hidden = !feed.length
-
-    // ---------- 开源贡献时间轴（从新到旧，默认近一年，其余点「展示更多」） ----------
-    const items = p.github.timeline ?? []
-    const fmtMonthDay = new Intl.DateTimeFormat(L.locale, { month: 'short', day: 'numeric' })
-    const inYear = items.filter(x => daysAgo(x.merged_at) <= 365).length
-    let shown = Math.min(items.length, Math.max(inYear, 5))
-    const drawTimeline = () => {
-      let year = ''
-      const parts: string[] = []
-      for (const x of items.slice(0, shown)) {
-        const y = x.merged_at.slice(0, 4)
-        if (y !== year) {
-          year = y
-          parts.push(`<li class="year">${y}</li>`)
-        }
-        const [owner, name] = x.repo.split('/')
-        parts.push(`<li class="item"><a href="${esc(x.url || `https://github.com/${x.repo}`)}" target="_blank" rel="noopener">
-          <span class="head">
-            <span class="name"><span>${esc(owner)}/</span>${esc(name ?? '')}</span>${x.kind === 'own' ? `<span class="own">${esc(L.ownBadge)}</span>` : ''}
-            <span class="meta"><span class="stars">${STAR}${compact(x.stars)}</span>${x.language ? `<span>${esc(x.language)}</span>` : ''}</span>
-            <time datetime="${esc(x.merged_at)}">${esc(fmtMonthDay.format(new Date(x.merged_at)))}</time>
-          </span>
-          <span class="title">${esc(x.title)}</span>
-        </a></li>`)
-      }
-      slot('timeline').innerHTML = parts.join('')
-      const rest = items.length - shown
-      const more = slot('more')
-      more.hidden = rest <= 0
-      more.textContent = L.more(rest)
-    }
-    slot('more').addEventListener('click', () => {
-      shown = Math.min(items.length, shown + 10)
-      drawTimeline()
+    const tabs = slot('models-tabs')
+    tabs.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button')
+      if (!btn)
+        return
+      tabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-selected', String(b === btn)))
+      const out = v.modelsView(btn.dataset.range as 'all' | 'month')
+      slot('models-sources').innerHTML = out.sources
+      slot('models').innerHTML = out.list
     })
-    drawTimeline()
-    slot('oss-section').hidden = !items.length
 
-    root.hidden = false
+    let shown = v.initialShown
+    slot('more').addEventListener('click', () => {
+      shown = Math.min(v.itemCount, shown + 10)
+      const out = v.timelineView(shown)
+      slot('timeline').innerHTML = out.html
+      slot('more').hidden = out.rest <= 0
+      slot('more').textContent = out.more
+    })
   }
 
-  // 每次都向服务器确认（服务端按天缓存，开销很小），避免浏览器拿着旧数据
-  fetch(root.dataset.api!, { cache: 'no-cache' })
-    .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-    .then(render)
-    .catch(e => console.warn('[activity] 数据加载或渲染失败：', e))
+  const embedded = root.querySelector('script[data-activity]')?.textContent
+  if (embedded) {
+    bind(JSON.parse(embedded) as Profile)
+  }
+  else {
+    // 兜底：构建时没拿到数据，现取接口渲染
+    fetch(root.dataset.api!, { cache: 'no-cache' })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((p: Profile) => {
+        fill(createView(lang).build(p).slots)
+        bind(p)
+        root.hidden = false
+      })
+      .catch(e => console.warn('[activity] 数据加载或渲染失败：', e))
+  }
 </script>
