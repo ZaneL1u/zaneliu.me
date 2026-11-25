@@ -182,6 +182,12 @@ const report = p.report
     <footer class="reveal" style="--d: 5" data-section="footer">
       <p class="serif sign-off">{tx(intro.sign_off)}</p>
       <p class="fine">© {new Date().getFullYear()} Zane Liu</p>
+      <!-- 统计说明：两种语言的页面都用这一句英文，不走 i18n -->
+      <p class="privacy">
+        This site keeps anonymous visit stats (page views, time on page, clicks, IP-based location and a hashed browser
+        fingerprint), used only to count visits. Nothing is shared or sold.
+        <a href="?notrack=1" data-track="opt-out" rel="nofollow">Opt out</a>
+      </p>
     </footer>
   </main>
 
@@ -692,6 +698,25 @@ const report = p.report
     margin: 0.25rem 0 0;
     font-size: 0.8rem;
     color: var(--faint);
+  }
+
+  .privacy {
+    max-width: 36rem;
+    margin: 0.9rem 0 0;
+    font-size: 0.72rem;
+    line-height: 1.55;
+    color: var(--faint);
+    opacity: 0.6;
+  }
+
+  .privacy a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .privacy a:hover {
+    color: var(--muted);
   }
 
 

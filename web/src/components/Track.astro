@@ -3,6 +3,8 @@
 // 记录：这次访问的基本信息（来源、语言、屏幕、时区、配色）、停留时长（前台且有操作的时间）、
 // 最深滚动、点击（站内 / 外链）、弹窗停留、各区块是否看到、复制、脚本报错。
 // 不记录输入内容和复制的文字本身。访问 ?notrack=1 后这个浏览器不再上报（?notrack=0 恢复）。
+// 浏览器指纹：用时区、语言、硬件档位、显卡、Canvas 渲染、已装字体算一个 SHA-256，只上报哈希，
+// 后台只拿它把「清了数据 / 无痕」的同一台设备合并估算访客数，不当身份标识。
 const endpoint
   = import.meta.env.PUBLIC_TRACK_ENDPOINT ?? 'https://dashboard.loki.zaneliu.me/api/v1/public/site/collect'
 ---
@@ -27,8 +29,15 @@ const endpoint
         url.searchParams.delete('notrack')
         history.replaceState(history.state, '', url.pathname + url.search + url.hash)
       }
-      if (localStorage.getItem(OFF_KEY) === '1')
+      if (localStorage.getItem(OFF_KEY) === '1') {
+        // 页脚的「Opt out」改成「已退出 · 撤销」
+        var link = document.querySelector('[data-track="opt-out"]')
+        if (link) {
+          link.textContent = 'Opted out \u00B7 Undo'
+          link.setAttribute('href', '?notrack=0')
+        }
         return
+      }
     }
     catch (e) {}
 
@@ -227,6 +236,78 @@ const endpoint
       var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0]
       return nav && nav.loadEventEnd > 0 ? Math.round(nav.loadEventEnd) : undefined
     }
+    // ---- 浏览器指纹（只上报哈希）
+    var fp = ''
+    var sentFp = false
+    function fnv(str, seed) {
+      var h = seed >>> 0
+      for (var i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i)
+        h = Math.imul(h, 16777619) >>> 0
+      }
+      return ('0000000' + h.toString(16)).slice(-8)
+    }
+    function fingerprint() {
+      // 不放屏幕分辨率和像素比：接外接显示器、浏览器缩放都会变，同一个人会被拆成好几个
+      var parts = [
+        screen.colorDepth,
+        (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone || '',
+        (navigator.languages || [navigator.language]).join(','),
+        navigator.hardwareConcurrency || '',
+        navigator.deviceMemory || '',
+        navigator.platform || '',
+        navigator.maxTouchPoints || 0,
+      ]
+      // 显卡（WebGL）
+      try {
+        var gl = document.createElement('canvas').getContext('webgl')
+        if (gl) {
+          var ext = gl.getExtension('WEBGL_debug_renderer_info')
+          parts.push(ext ? gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) + '|' + gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER))
+        }
+      }
+      catch (e) {}
+      // Canvas 渲染差异（字体渲染、抗锯齿、显卡）
+      try {
+        var c = document.createElement('canvas')
+        c.width = 240
+        c.height = 60
+        var x = c.getContext('2d')
+        x.textBaseline = 'top'
+        x.font = '16px Arial'
+        x.fillStyle = '#f60'
+        x.fillRect(100, 1, 62, 20)
+        x.fillStyle = '#069'
+        x.fillText('zaneliu.me \u2615 \u6307\u7eb9', 2, 15)
+        x.fillStyle = 'rgba(102, 204, 0, 0.7)'
+        x.fillText('zaneliu.me \u2615 \u6307\u7eb9', 4, 17)
+        parts.push(c.toDataURL())
+      }
+      catch (e) {}
+      // 已装字体：和三种通用字体比宽度
+      try {
+        var ctx = document.createElement('canvas').getContext('2d')
+        var w = function (f) {
+          ctx.font = '72px ' + f
+          return ctx.measureText('mmmmmmmmmmlli1WW').width
+        }
+        var base = [w('monospace'), w('sans-serif'), w('serif')]
+        var fonts = ['Arial', 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Segoe UI', 'Roboto', 'Ubuntu', 'SimSun', 'Menlo', 'Consolas', 'Source Han Sans SC', 'WenQuanYi Micro Hei']
+        parts.push(fonts.filter(function (f) {
+          return w('"' + f + '",monospace') !== base[0] || w('"' + f + '",sans-serif') !== base[1] || w('"' + f + '",serif') !== base[2]
+        }).join(','))
+      }
+      catch (e) {}
+      var text = parts.join('||')
+      if (window.crypto && crypto.subtle && window.TextEncoder) {
+        return crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(function (buf) {
+          return Array.from(new Uint8Array(buf)).map(function (b) { return ('0' + b.toString(16)).slice(-2) }).join('').slice(0, 32)
+        })
+      }
+      // 不支持 WebCrypto 的老浏览器：FNV 拼 32 位十六进制
+      return Promise.resolve(fnv(text, 2166136261) + fnv(text, 16777619) + fnv(text, 33554467) + fnv(text, 50331653))
+    }
+
     var sentActive = -1
     var sentScroll = -1
     var sentLoad = false
@@ -236,13 +317,17 @@ const endpoint
       if (final)
         openAt.forEach(function (_, d) { closeDialog(d) })
       var a = Math.round(active)
-      if (started && !queue.length && a === sentActive && scroll === sentScroll && (sentLoad || !loadMs()))
+      if (started && !queue.length && a === sentActive && scroll === sentScroll && (sentLoad || !loadMs()) && (sentFp || !fp))
         return
       var body = { pv: pv, vid: vid, t: now(), active: a, scroll: scroll, events: queue.splice(0, 100) }
       if (!started) {
         var ctx = context()
         for (var k in ctx) body[k] = ctx[k]
         started = true
+      }
+      if (fp && !sentFp) {
+        body.fp = fp
+        sentFp = true
       }
       var load = loadMs()
       if (load && !sentLoad) {
@@ -276,8 +361,9 @@ const endpoint
         flush(false)
     }, FLUSH_MS)
 
-    // 打开就先报一次（带上下文），加载完成后再补一次性能数据
-    flush(false)
+    // 打开就先报一次（带上下文和指纹；指纹最多等 800ms，没算完就跟着下一次上报），加载完成后再补一次性能数据
+    var fpDone = fingerprint().then(function (v) { fp = v }).catch(function () {})
+    Promise.race([fpDone, new Promise(function (r) { setTimeout(r, 800) })]).then(function () { flush(false) })
     addEventListener('load', function () { setTimeout(function () { flush(false) }, 0) })
   })()
 </script>
